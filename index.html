@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banco Atlântico — Homebanking</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: #f3f4f6;
+    color: #111827;
+    min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #003876 0%, #0050a3 100%);
+    color: white;
+    padding: 16px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .logo { font-size: 22px; font-weight: 600; letter-spacing: 0.3px; }
+  .user { font-size: 13px; opacity: 0.9; }
+  .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px; }
+  .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .card h2 { font-size: 14px; text-transform: uppercase; color: #6b7280; margin-bottom: 14px; letter-spacing: 0.5px; }
+  .saldo-card { background: linear-gradient(135deg, #003876, #0050a3); color: white; }
+  .saldo-card h2 { color: rgba(255,255,255,0.85); }
+  .saldo { font-size: 32px; font-weight: 600; margin-bottom: 6px; }
+  .saldo-sub { font-size: 12px; opacity: 0.85; }
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .action-btn {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    color: white; padding: 12px 8px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; transition: background 0.15s;
+  }
+  .action-btn:hover { background: rgba(255,255,255,0.22); }
+  .action-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .stats-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat { padding: 8px; }
+  .stat-label { font-size: 11px; color: #6b7280; text-transform: uppercase; }
+  .stat-value { font-size: 18px; font-weight: 600; color: #111827; margin-top: 2px; }
+  .stat-value.green { color: #059669; }
+  .stat-value.red { color: #dc2626; }
+  .stat-value.amber { color: #d97706; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: #4b5563; margin-bottom: 5px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 9px 11px; font-size: 14px;
+    border: 1px solid #d1d5db; border-radius: 6px; background: white;
+  }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: #0050a3; }
+  .btn-primary {
+    background: #003876; color: white; border: none; padding: 11px 22px;
+    border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;
+    width: 100%; transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #002a5c; }
+  .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+  .tab { padding: 9px 14px; cursor: pointer; font-size: 13px; color: #6b7280; border-bottom: 2px solid transparent; }
+  .tab.active { color: #003876; border-color: #003876; font-weight: 500; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .transactions { max-height: 380px; overflow-y: auto; }
+  .txn { display: flex; justify-content: space-between; align-items: center;
+         padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+  .txn:last-child { border-bottom: none; }
+  .txn-info { display: flex; gap: 10px; align-items: center; }
+  .txn-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .txn-icon.success { background: #d1fae5; color: #059669; }
+  .txn-icon.error { background: #fee2e2; color: #dc2626; }
+  .txn-desc { font-weight: 500; }
+  .txn-time { font-size: 11px; color: #6b7280; }
+  .txn-value { font-weight: 600; }
+  .txn-value.success { color: #111827; }
+  .txn-value.error { color: #dc2626; }
+  .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+  .alert.success { background: #d1fae5; color: #065f46; }
+  .alert.error { background: #fee2e2; color: #991b1b; }
+  .auto-mode {
+    background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .toggle { position: relative; display: inline-block; width: 36px; height: 18px; }
+  .toggle input { display: none; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 18px; transition: 0.2s; }
+  .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; top: 2px; background: white; border-radius: 50%; transition: 0.2s; }
+  input:checked + .slider { background: #003876; }
+  input:checked + .slider:before { transform: translateX(18px); }
+  @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🏦 Banco Atlântico</div>
+  <div class="user">João Silva · IBAN: <span id="iban-user">PT50...</span></div>
+</div>
+
+<div class="container">
+
+  <!-- COLUNA ESQUERDA -->
+  <div>
+    <div class="card saldo-card">
+      <h2>Saldo disponível</h2>
+      <div class="saldo">€ <span id="saldo">12.435,80</span></div>
+      <div class="saldo-sub">Conta à ordem · EUR</div>
+
+      <div class="actions">
+        <button class="action-btn" onclick="abrirTab('mbway')"><span class="icon">📱</span>MB WAY</button>
+        <button class="action-btn" onclick="abrirTab('multibanco')"><span class="icon">🏧</span>Multibanco</button>
+        <button class="action-btn" onclick="abrirTab('sepa')"><span class="icon">🌍</span>SEPA</button>
+        <button class="action-btn" onclick="abrirTab('cartao')"><span class="icon">💳</span>Cartão</button>
+        <button class="action-btn" onclick="simularLogin()"><span class="icon">🔐</span>Login</button>
+        <button class="action-btn" onclick="simularFraude()"><span class="icon">🛡️</span>Fraude</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 14px;">
+      <h2>Estatísticas da sessão</h2>
+      <div class="stats-card">
+        <div class="stat">
+          <div class="stat-label">Enviadas</div>
+          <div class="stat-value green" id="stat-enviadas">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Erros</div>
+          <div class="stat-value red" id="stat-erros">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total €</div>
+          <div class="stat-value amber" id="stat-total">0</div>
+        </div>
+      </div>
+      <div class="auto-mode">
+        <span>🤖 Modo Auto (10 ops/seg)</span>
+        <label class="toggle">
+          <input type="checkbox" id="auto-mode" onchange="toggleAuto()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLUNA DIREITA -->
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="mbway" onclick="abrirTab('mbway')">MB WAY</div>
+      <div class="tab" data-tab="multibanco" onclick="abrirTab('multibanco')">Multibanco</div>
+      <div class="tab" data-tab="sepa" onclick="abrirTab('sepa')">SEPA</div>
+      <div class="tab" data-tab="cartao" onclick="abrirTab('cartao')">Cartão</div>
+      <div class="tab" data-tab="historico" onclick="abrirTab('historico')">Histórico</div>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <!-- MB WAY -->
+    <div class="tab-content active" id="tab-mbway">
+      <div class="form-group">
+        <label>Telemóvel destinatário</label>
+        <input type="text" id="mbway-tel" placeholder="+351 9XX XXX XXX" value="+351 912 345 678">
+      </div>
+      <div class="form-group">
+        <label>Valor (€)</label>
+        <input type="number" id="mbway-valor" placeholder="0.00" value="25.00">
+      </div>
+      <button class="btn-primary" onclick="executarTransacao('mbway')">Enviar com MB WAY</button>
+    </div>
+
+    <!-- Multibanco -->
+    <div class="tab-content" id="tab-multibanco">
+      <div class="form-group">
+        <label>Entidade</label>
+        <input type="text" id="mb-entidade" placeholder="12345" value="20455">
+      </div>
+      <div class="form-group">
+        <label>Referência</label>
+        <input type="text" id="mb-ref" placeholder="000 000 000" value="123456789">
+      </div>
+      <div class="form-group">
+        <label>Valor (€)</label>
+        <input type="number" id="mb-valor" placeholder="0.00" value="42.50">
+      </div>
+      <button class="btn-primary" onclick="executarTransacao('multibanco')">Pagar Multibanco</button>
+    </div>
+
+    <!-- SEPA -->
+    <div class="tab-content" id="tab-sepa">
+      <div class="form-group">
+        <label>IBAN destinatário</label>
+        <input type="text" id="sepa-iban" placeholder="PT50..." value="PT50003500000000123456789">
+      </div>
+      <div class="form-group">
+        <label>Valor (€)</label>
+        <input type="number" id="sepa-valor" placeholder="0.00" value="500.00">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="sepa-tipo">
+          <option value="transferencia_normal">Transferência normal</option>
+          <option value="transferencia_urgente">Transferência urgente</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="executarTransacao('transferencia_sepa')">Executar SEPA</button>
+    </div>
+
+    <!-- Cartão -->
+    <div class="tab-content" id="tab-cartao">
+      <div class="form-group">
+        <label>Tipo de cartão</label>
+        <select id="cartao-tipo">
+          <option value="cartao_debito">Débito</option>
+          <option value="cartao_credito">Crédito</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Estabelecimento</label>
+        <input type="text" id="cartao-estab" placeholder="Continente, Galp..." value="Continente Colombo">
+      </div>
+      <div class="form-group">
+        <label>Valor (€)</label>
+        <input type="number" id="cartao-valor" placeholder="0.00" value="89.90">
+      </div>
+      <button class="btn-primary" onclick="executarTransacao('cartao')">Pagar com Cartão</button>
+    </div>
+
+    <!-- Histórico -->
+    <div class="tab-content" id="tab-historico">
+      <div class="transactions" id="transactions-list">
+        <div style="text-align: center; color: #9ca3af; padding: 40px 0;">Sem transações ainda</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BANCOS_PT = ["0035", "0033", "0010", "0007", "0036", "0018"];
+let saldo = 12435.80;
+let stats = { enviadas: 0, erros: 0, total: 0 };
+let transactions = [];
+let autoInterval = null;
+
+const ERROR_CODES = [
+  "TIMEOUT_SIBS", "SALDO_INSUFICIENTE", "LIMITE_DIARIO_EXCEDIDO",
+  "AUTORIZACAO_NEGADA", "MBWAY_NAO_REGISTADO", "IBAN_INVALIDO"
+];
+
+function ibanPT() {
+  const banco = BANCOS_PT[Math.floor(Math.random() * BANCOS_PT.length)];
+  return `PT50${banco}${String(Math.floor(Math.random()*9999)).padStart(4,'0')}${String(Math.floor(Math.random()*99999999999)).padStart(11,'0')}${String(Math.floor(Math.random()*99)).padStart(2,'0')}`;
+}
+
+document.getElementById('iban-user').textContent = ibanPT();
+
+function abrirTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`)?.classList.add('active');
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
+}
+
+function showAlert(msg, tipo='success') {
+  const box = document.getElementById('alert-box');
+  box.innerHTML = `<div class="alert ${tipo}">${msg}</div>`;
+  setTimeout(() => { box.innerHTML = ''; }, 4000);
+}
+
+async function enviarEvento(evt) {
+  try {
+    const r = await fetch('/api/ingest', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(evt)
+    });
+    if (!r.ok) throw new Error('Falha no envio');
+    return true;
+  } catch (e) {
+    console.error('Erro:', e);
+    return false;
+  }
+}
+
+function genTransaction(canal, valor, servico, forceError=false) {
+  const lat = {
+    "mbway": [40, 150], "multibanco": [60, 250], "cartao_debito": [50, 250],
+    "cartao_credito": [60, 350], "transferencia_sepa": [200, 1500]
+  }[canal] || [50, 200];
+
+  const errorRate = forceError ? 1.0 : ({
+    "mbway": 0.005, "multibanco": 0.008, "cartao_debito": 0.006,
+    "cartao_credito": 0.018, "transferencia_sepa": 0.010
+  }[canal] || 0.01);
+
+  const isError = Math.random() < errorRate;
+  let latencia = Math.floor(lat[0] + Math.random()*(lat[1]-lat[0]));
+  if (isError) latencia = Math.floor(latencia * (1.5 + Math.random()*1.5));
+
+  const evt = {
+    "event.provider": "banco.core",
+    "event.type": `transaction.${canal}`,
+    "timestamp": new Date().toISOString(),
+    "transaction_id": crypto.randomUUID(),
+    "canal": canal,
+    "servico": servico,
+    "status": isError ? "error" : "success",
+    "valor_eur": parseFloat(valor),
+    "latencia_ms": latencia,
+    "iban_origem": document.getElementById('iban-user').textContent,
+    "iban_destino": ibanPT(),
+    "perfil_cliente": "normal",
+    "moeda": "EUR",
+    "source": "webapp"
+  };
+  if (isError) {
+    evt.error_code = ERROR_CODES[Math.floor(Math.random()*ERROR_CODES.length)];
+  }
+  return evt;
+}
+
+async function executarTransacao(tipo) {
+  let canal, valor, servico;
+  if (tipo === 'mbway') {
+    canal = 'mbway'; valor = document.getElementById('mbway-valor').value;
+    servico = 'enviar_dinheiro';
+  } else if (tipo === 'multibanco') {
+    canal = 'multibanco'; valor = document.getElementById('mb-valor').value;
+    servico = 'pagamento_referencia';
+  } else if (tipo === 'transferencia_sepa') {
+    canal = 'transferencia_sepa'; valor = document.getElementById('sepa-valor').value;
+    servico = document.getElementById('sepa-tipo').value;
+  } else if (tipo === 'cartao') {
+    canal = document.getElementById('cartao-tipo').value;
+    valor = document.getElementById('cartao-valor').value;
+    servico = 'pagamento_loja';
+  }
+
+  if (!valor || valor <= 0) {
+    showAlert('Valor inválido', 'error');
+    return;
+  }
+
+  const evt = genTransaction(canal, valor, servico);
+  const ok = await enviarEvento(evt);
+
+  if (ok && evt.status === 'success') {
+    saldo -= parseFloat(valor);
+    document.getElementById('saldo').textContent = saldo.toFixed(2).replace('.', ',');
+    stats.enviadas++;
+    stats.total += parseFloat(valor);
+    showAlert(`✅ ${canal.toUpperCase()} de €${valor} concluído`, 'success');
+  } else if (ok && evt.status === 'error') {
+    stats.erros++;
+    showAlert(`❌ Falhou: ${evt.error_code}`, 'error');
+  } else {
+    showAlert('❌ Falha no envio do evento', 'error');
+  }
+
+  transactions.unshift(evt);
+  if (transactions.length > 20) transactions.pop();
+  renderTransactions();
+  updateStats();
+}
+
+function renderTransactions() {
+  const el = document.getElementById('transactions-list');
+  if (transactions.length === 0) {
+    el.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 40px 0;">Sem transações ainda</div>';
+    return;
+  }
+  el.innerHTML = transactions.map(t => {
+    const ok = t.status === 'success';
+    const time = new Date(t.timestamp).toLocaleTimeString('pt-PT');
+    return `
+      <div class="txn">
+        <div class="txn-info">
+          <div class="txn-icon ${ok ? 'success' : 'error'}">${ok ? '↑' : '✕'}</div>
+          <div>
+            <div class="txn-desc">${t.canal.toUpperCase()} · ${t.servico}</div>
+            <div class="txn-time">${time} · ${t.latencia_ms}ms ${ok ? '' : '· '+t.error_code}</div>
+          </div>
+        </div>
+        <div class="txn-value ${ok ? 'success' : 'error'}">€${t.valor_eur.toFixed(2)}</div>
+      </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-enviadas').textContent = stats.enviadas;
+  document.getElementById('stat-erros').textContent = stats.erros;
+  document.getElementById('stat-total').textContent = stats.total.toFixed(0);
+}
+
+async function simularLogin() {
+  const failed = Math.random() < 0.3;
+  const evt = {
+    "event.provider": "banco.auth",
+    "event.type": "login.attempt",
+    "timestamp": new Date().toISOString(),
+    "session_id": crypto.randomUUID(),
+    "status": failed ? "failed" : "success",
+    "utilizador": "joao.silva",
+    "ip_origem": `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`,
+    "metodo": "chave_movel_digital",
+    "pais_origem": failed ? ["BR","GB","RU","ES"][Math.floor(Math.random()*4)] : "PT",
+    "motivo": failed ? "credencial_invalida" : "ok",
+    "source": "webapp"
+  };
+  await enviarEvento(evt);
+  showAlert(failed ? '🚨 Login falhou (suspeito)' : '✅ Login OK', failed ? 'error' : 'success');
+  stats.enviadas++; if (failed) stats.erros++;
+  updateStats();
+}
+
+async function simularFraude() {
+  const evt = {
+    "event.provider": "banco.fraude",
+    "event.type": "fraud.check",
+    "timestamp": new Date().toISOString(),
+    "fraud_id": crypto.randomUUID(),
+    "canal": ["mbway","cartao_credito","transferencia_sepa"][Math.floor(Math.random()*3)],
+    "status": "blocked",
+    "score": 85 + Math.floor(Math.random()*15),
+    "valor_tentado_eur": 1500 + Math.random()*5000,
+    "regra": "VELOCIDADE_ANORMAL",
+    "iban_origem": ibanPT(),
+    "moeda": "EUR",
+    "source": "webapp"
+  };
+  await enviarEvento(evt);
+  showAlert(`🛡️ Fraude BLOQUEADA: €${evt.valor_tentado_eur.toFixed(2)}`, 'success');
+  stats.enviadas++;
+  updateStats();
+}
+
+function toggleAuto() {
+  const on = document.getElementById('auto-mode').checked;
+  if (on) {
+    autoInterval = setInterval(() => {
+      const op = Math.random();
+      if (op < 0.7) {
+        const canais = ['mbway','multibanco','cartao_debito','cartao_credito','transferencia_sepa'];
+        const c = canais[Math.floor(Math.random()*canais.length)];
+        const val = (Math.random()*200).toFixed(2);
+        const evt = genTransaction(c, val, 'auto_op');
+        enviarEvento(evt).then(ok => {
+          if (ok) {
+            stats.enviadas++;
+            if (evt.status === 'error') stats.erros++;
+            transactions.unshift(evt);
+            if (transactions.length > 20) transactions.pop();
+            renderTransactions(); updateStats();
+          }
+        });
+      } else if (op < 0.9) {
+        simularLogin();
+      } else {
+        simularFraude();
+      }
+    }, 100);
+  } else {
+    clearInterval(autoInterval);
+    autoInterval = null;
+  }
+}
+</script>
+
+</body>
+</html>
