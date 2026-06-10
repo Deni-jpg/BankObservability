@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banco Atlântico — Demo Observabilidade</title>
+
+  <script type="text/javascript" src="https://dok.js-cdn.dynatrace.com/jstag/19e225aa390/bf71124pqh/810375f9aaf6906c_complete.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --azul:     #0a3d6b;
+      --azul-c:   #1565c0;
+      --verde:    #1b7a3e;
+      --vermelho: #c0392b;
+      --laranja:  #d35400;
+      --cinza:    #f5f6fa;
+      --borda:    #dee2e6;
+      --texto:    #2d3436;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--cinza); color: var(--texto); min-height: 100vh; }
+
+    /* â”€â”€ Login overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: linear-gradient(135deg, var(--azul) 0%, var(--azul-c) 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-card {
+      background: white; border-radius: 14px; padding: 40px 36px;
+      width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .login-card h2 { text-align: center; color: var(--azul); font-size: 1.6rem; margin-bottom: 6px; }
+    .login-card .subtitle { text-align: center; color: #888; font-size: .85rem; margin-bottom: 28px; }
+    .login-field { margin-bottom: 16px; }
+    .login-field label { display: block; font-size: .8rem; color: #555; margin-bottom: 5px; font-weight: 600; }
+    .login-field input {
+      width: 100%; padding: 11px 14px; border: 1px solid var(--borda);
+      border-radius: 8px; font-size: .9rem; transition: border .2s;
+    }
+    .login-field input:focus { outline: none; border-color: var(--azul-c); }
+    .login-btn {
+      width: 100%; padding: 13px; background: var(--azul-c); color: white;
+      border: none; border-radius: 8px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; margin-top: 8px; transition: background .2s;
+    }
+    .login-btn:hover { background: var(--azul); }
+    .login-error { color: var(--vermelho); font-size: .82rem; text-align: center; margin-top: 10px; display: none; }
+
+    /* â”€â”€ Toast notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    #toast-container { position: fixed; bottom: 60px; right: 20px; z-index: 500; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 18px; border-radius: 8px; color: white; font-size: .84rem;
+      font-weight: 600; min-width: 260px; max-width: 360px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      animation: slideIn .3s ease; display: flex; align-items: center; gap: 10px;
+    }
+    .toast.success { background: var(--verde); }
+    .toast.error   { background: var(--vermelho); }
+    .toast.warning { background: var(--laranja); }
+    .toast.info    { background: var(--azul-c); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* â”€â”€ Confirmation modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    #confirm-modal {
+      position: fixed; inset: 0; z-index: 800;
+      background: rgba(0,0,0,.5); display: none;
+      align-items: center; justify-content: center;
+    }
+    #confirm-modal.show { display: flex; }
+    .confirm-card {
+      background: white; border-radius: 12px; padding: 30px 28px;
+      width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+    }
+    .confirm-card h3 { margin-bottom: 16px; color: var(--azul); }
+    .confirm-detail { background: var(--cinza); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: .88rem; }
+    .confirm-detail strong { display: block; font-size: 1.2rem; color: var(--verde); margin: 4px 0; }
+    .confirm-btns { display: flex; gap: 10px; }
+    .confirm-btns button { flex: 1; padding: 11px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: .9rem; }
+    #confirm-yes { background: var(--azul-c); color: white; }
+    #confirm-no  { background: #eee; color: #555; }
+
+    /* â”€â”€ Main layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    header {
+      background: linear-gradient(135deg, var(--azul) 0%, var(--azul-c) 100%);
+      color: white; padding: 14px 28px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+    .user-info { font-size: .85rem; opacity: .9; text-align: right; cursor: pointer; }
+    .user-info strong { display: block; font-size: 1rem; }
+    .user-info:hover { opacity: 1; }
+
+    main { max-width: 1340px; margin: 24px auto; padding: 0 20px; display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+
+    .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.07); padding: 20px; }
+    h2 { font-size: 1rem; font-weight: 600; color: var(--azul); margin-bottom: 14px; border-bottom: 2px solid var(--cinza); padding-bottom: 8px; }
+    h3 { font-size: .9rem; font-weight: 600; margin-bottom: 10px; color: #555; }
+
+    .balance { font-size: 2.2rem; font-weight: 700; color: var(--verde); text-align: center; margin: 8px 0 4px; transition: all .4s; }
+    /* dt-mask: Dynatrace Session Replay mascara este elemento */
+    .iban-display { text-align: center; font-size: .78rem; color: #777; margin-bottom: 16px; font-family: monospace; }
+
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    button { padding: 10px 12px; border: none; border-radius: 7px; cursor: pointer; font-size: .82rem; font-weight: 600; transition: all .15s; }
+    button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    .btn-blue   { background: var(--azul-c); color: white; }
+    .btn-green  { background: var(--verde); color: white; }
+    .btn-red    { background: var(--vermelho); color: white; }
+    .btn-orange { background: var(--laranja); color: white; }
+    .btn-gray   { background: #636e72; color: white; }
+    .btn-dark   { background: var(--azul); color: white; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+    .stat { text-align: center; background: var(--cinza); border-radius: 7px; padding: 8px 4px; }
+    .stat-val { font-size: 1.3rem; font-weight: 700; color: var(--azul-c); }
+    .stat-lbl { font-size: .7rem; color: #888; margin-top: 2px; }
+
+    .auto-panel { background: var(--cinza); border-radius: 8px; padding: 12px; margin-top: 10px; }
+    .auto-panel label { font-size: .8rem; color: #555; display: block; margin-bottom: 6px; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider-sw { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 24px; transition: .3s; }
+    .slider-sw:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+    input:checked + .slider-sw { background: var(--azul-c); }
+    input:checked + .slider-sw:before { transform: translateX(20px); }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tab { padding: 7px 14px; border-radius: 6px; font-size: .8rem; font-weight: 600; cursor: pointer; background: var(--cinza); color: #555; border: 1px solid var(--borda); }
+    .tab.active { background: var(--azul-c); color: white; border-color: var(--azul-c); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .8rem; color: #666; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid var(--borda); border-radius: 6px; font-size: .88rem; transition: border .2s; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--azul-c); }
+    .submit-btn { width: 100%; padding: 11px; font-size: .9rem; border-radius: 7px; margin-top: 6px; }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .history-table th { background: var(--azul); color: white; padding: 9px 10px; text-align: left; font-weight: 600; }
+    .history-table td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .history-table tr:hover td { background: #f8f9fa; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: .73rem; font-weight: 600; display: inline-block; }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-error   { background: #f8d7da; color: #721c24; }
+    .badge-blocked { background: #fff3cd; color: #856404; }
+    .trace-link { font-size: .7rem; color: var(--azul-c); text-decoration: none; font-family: monospace; }
+    .trace-link:hover { text-decoration: underline; }
+
+    .status-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--azul); color: white; font-size: .78rem; padding: 6px 20px; display: flex; gap: 24px; z-index: 100; }
+    .status-bar span { opacity: .85; }
+    .status-bar strong { opacity: 1; }
+
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- â”€â”€ LOGIN OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="login-overlay">
+  <div class="login-card">
+    <h2>ðŸ¦ Banco Atlântico</h2>
+    <p class="subtitle">Acesso Seguro — Homebanking</p>
+    <div class="login-field">
+      <label>Utilizador</label>
+      <!-- data-dtrum-input-type="sensitive": RUM não captura o conteúdo -->
+      <input type="text" id="login-user" placeholder="joao.silva" value="joao.silva" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Código PIN</label>
+      <!-- Senha: sempre mascarada no Session Replay -->
+      <input type="password" id="login-pin" placeholder="••••••" value="123456"
+             data-dtrum-input-type="sensitive" autocomplete="current-password">
+    </div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-error" id="login-error">Credenciais inválidas. Tente novamente.</div>
+  </div>
+</div>
+
+<!-- â”€â”€ CONFIRMATION MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="confirm-modal">
+  <div class="confirm-card">
+    <h3>Confirmar Operação</h3>
+    <div class="confirm-detail">
+      <div id="confirm-desc" style="color:#555;font-size:.85rem">Operação</div>
+      <strong id="confirm-valor">â‚¬ 0,00</strong>
+      <div id="confirm-destino" style="font-size:.78rem;color:#888;font-family:monospace"></div>
+    </div>
+    <div class="confirm-btns">
+      <button id="confirm-yes" class="btn-blue">Confirmar</button>
+      <button id="confirm-no"  onclick="cancelarConfirmacao()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- â”€â”€ TOAST CONTAINER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="toast-container"></div>
+
+<!-- â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<header>
+  <div>
+    <h1>ðŸ¦ Banco Atlântico</h1>
+    <div style="font-size:.75rem;opacity:.7">Demo Â· Observabilidade Full-Stack Â· Dynatrace</div>
+  </div>
+  <div class="user-info" onclick="mostrarPerfil()" title="Clique para ver perfil">
+    <strong id="username-display">—</strong>
+    <span id="iban-header" class="dt-mask">PT50 Â·Â·Â·</span>
+  </div>
+</header>
+
+<main>
+  <!-- â”€â”€ PAINEL ESQUERDO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>Conta Ã  Ordem</h2>
+      <div class="balance" id="saldo-display">â‚¬ 12.435,80</div>
+      <!-- dt-mask: Dynatrace Session Replay mascara o IBAN completo -->
+      <div class="iban-display dt-mask" id="iban-display">A carregar...</div>
+
+      <div class="btn-grid">
+        <button class="btn-blue"   onclick="abrirAba('mbway')">ðŸ“± MB WAY</button>
+        <button class="btn-gray"   onclick="abrirAba('multibanco')">ðŸ§ Multibanco</button>
+        <button class="btn-green"  onclick="abrirAba('sepa')">ðŸŒ SEPA</button>
+        <button class="btn-dark"   onclick="abrirAba('cartao')">ðŸ’³ Cartão</button>
+        <button class="btn-orange" onclick="simularLogin()">ðŸ” Simular Login</button>
+        <button class="btn-red"    onclick="simularFraudeManual()">ðŸš¨ Fraude</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-val" id="cnt-enviados">0</div>
+          <div class="stat-lbl">Eventos</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="cnt-erros" style="color:var(--vermelho)">0</div>
+          <div class="stat-lbl">Erros</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="cnt-valor">0</div>
+          <div class="stat-lbl">â‚¬ Total</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>âš¡ Modo Automático</h2>
+      <div class="auto-panel">
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="auto-toggle" onchange="toggleAuto()">
+            <span class="slider-sw"></span>
+          </label>
+          <span style="font-size:.85rem;font-weight:600">Geração Contínua de Tráfego</span>
+        </div>
+        <label>Velocidade: <strong><span id="rate-display">10</span> op/s</strong></label>
+        <input type="range" id="rate-slider" min="1" max="40" value="10"
+               oninput="document.getElementById('rate-display').textContent=this.value">
+        <div style="font-size:.73rem;color:#888;margin-top:8px">
+          Mix: 70% transações Â· 20% logins Â· 10% verificações de fraude
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- â”€â”€ PAINEL DIREITO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="tabs">
+        <div class="tab active" onclick="abrirAba('mbway')">ðŸ“± MB WAY</div>
+        <div class="tab" onclick="abrirAba('multibanco')">ðŸ§ Multibanco</div>
+        <div class="tab" onclick="abrirAba('sepa')">ðŸŒ SEPA</div>
+        <div class="tab" onclick="abrirAba('cartao')">ðŸ’³ Cartão</div>
+        <div class="tab" onclick="abrirAba('historico')">ðŸ“‹ Histórico</div>
+      </div>
+
+      <!-- MB WAY -->
+      <div id="tab-mbway" class="tab-content active">
+        <h3>TransferÃªncia MB WAY</h3>
+        <div class="form-group">
+          <label>Telemóvel do Destinatário</label>
+          <input type="tel" id="mbway-phone" placeholder="+351 912 345 678" value="+351 912 345 678">
+        </div>
+        <div class="form-group">
+          <label>Montante (â‚¬)</label>
+          <input type="number" id="mbway-valor" placeholder="0.00" value="25.00" min="0.01" max="1000">
+        </div>
+        <button class="submit-btn btn-blue" onclick="pedirConfirmacao('mbway')">Enviar via MB WAY</button>
+      </div>
+
+      <!-- MULTIBANCO -->
+      <div id="tab-multibanco" class="tab-content">
+        <h3>Pagamento Multibanco</h3>
+        <div class="form-group">
+          <label>Entidade</label>
+          <input type="text" id="mb-entidade" value="11249">
+        </div>
+        <div class="form-group">
+          <label>ReferÃªncia</label>
+          <input type="text" id="mb-ref" value="123 456 789">
+        </div>
+        <div class="form-group">
+          <label>Montante (â‚¬)</label>
+          <input type="number" id="mb-valor" value="48.50" min="0.01">
+        </div>
+        <button class="submit-btn btn-gray" onclick="pedirConfirmacao('multibanco')">Pagar ReferÃªncia</button>
+      </div>
+
+      <!-- SEPA -->
+      <div id="tab-sepa" class="tab-content">
+        <h3>TransferÃªncia SEPA</h3>
+        <div class="form-group">
+          <label>IBAN Destinatário</label>
+          <!-- data-dtrum-input-type="sensitive": RUM não captura o IBAN -->
+          <input type="text" id="sepa-iban" value="PT50 0035 0000 0000 0000 0000 0"
+                 data-dtrum-input-type="sensitive">
+        </div>
+        <div class="form-group">
+          <label>Montante (â‚¬)</label>
+          <input type="number" id="sepa-valor" value="250.00" min="0.01">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="sepa-tipo">
+            <option value="sepa">SEPA Normal (1-2 dias úteis)</option>
+            <option value="sepa_urgente">SEPA Urgente (mesmo dia)</option>
+          </select>
+        </div>
+        <button class="submit-btn btn-green" onclick="pedirConfirmacao('sepa')">Transferir SEPA</button>
+      </div>
+
+      <!-- CARTÃƒO -->
+      <div id="tab-cartao" class="tab-content">
+        <h3>Pagamento com Cartão</h3>
+        <div class="form-group">
+          <label>Tipo de Cartão</label>
+          <select id="cartao-tipo">
+            <option value="cartao_debito">Cartão de Débito</option>
+            <option value="cartao_credito">Cartão de Crédito</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estabelecimento</label>
+          <input type="text" id="cartao-loja" value="Supermercado Continente">
+        </div>
+        <div class="form-group">
+          <label>Montante (â‚¬)</label>
+          <input type="number" id="cartao-valor" value="67.30" min="0.01">
+        </div>
+        <button class="submit-btn btn-dark" onclick="pedirConfirmacao('cartao')">Pagar com Cartão</button>
+      </div>
+
+      <!-- HISTÃ“RICO -->
+      <div id="tab-historico" class="tab-content">
+        <h3>Ãšltimas Transações (com Trace ID)</h3>
+        <div style="overflow-x:auto">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Hora</th><th>Canal</th><th>Valor â‚¬</th>
+                <th>Status</th><th>LatÃªncia</th><th>Trace (Dynatrace)</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sem transações ainda</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="status-bar">
+  <span>ðŸŸ¢ Gateway: <strong id="gw-status">conectado</strong></span>
+  <span>ðŸ“¡ OTel: <strong>ativo</strong></span>
+  <span>ðŸ‘¤ RUM: <strong id="rum-status">—</strong></span>
+  <span>ðŸ¦ Tenant: <strong id="tenant-short">${DT_TENANT}</strong></span>
+  <span id="auto-status" style="color:#81ecec;display:none">âš¡ Auto: <strong id="auto-rate-display">—</strong> op/s</span>
+</div>
+
+<script>
+"use strict";
+
+const DT_TENANT = "${DT_TENANT}";
+const API_BASE  = "";
+
+// â”€â”€â”€ Estado global â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+let totalEnviados = 0, totalErros = 0, totalValor = 0;
+let historico = [], autoInterval = null;
+let ibanOrigem = gerarIBAN();
+let currentUser = null;
+let pendingOp = null;  // operação a aguardar confirmação
+
+// â”€â”€â”€ RUM helpers — seguros se agente não estiver carregado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const rum = {
+  identify:    (id)        => window.dtrum?.identifyUser?.(id),
+  page:        (name)      => window.dtrum?.setCustomizedPageName?.(`Banco Atlântico — ${name}`),
+  enter:       (name)      => window.dtrum?.enterAction?.(name),
+  leave:       (id)        => window.dtrum?.leaveAction?.(id),
+  error:       (name, msg) => window.dtrum?.reportCustomError?.(name, msg, false),
+  sessionProp: (props)     => { try { window.dtrum?.sendSessionProperties?.(props.stringProperties || {}, props.longProperties || {}, {}); } catch(e) {} },
+  isLoaded:    ()          => !!window.dtrum,
+};
+
+// â”€â”€â”€ LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function fazerLogin() {
+  const user = document.getElementById("login-user").value.trim() || "joao.silva";
+  const pin  = document.getElementById("login-pin").value;
+
+  const actionId = rum.enter("Login Bancário — Homebanking");
+
+  // Chama a API real (gera distributed trace)
+  let resultado;
+  try {
+    const res  = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metodo: "PIN", user_id: user }),
+    });
+    resultado = await res.json();
+  } catch (e) {
+    rum.error("Erro de Rede — Login", e.message);
+    rum.leave(actionId);
+    mostrarErroLogin();
+    return;
+  }
+
+  if (resultado.status === "success") {
+    currentUser = user;
+    const email = `${user}@bancoatlantico.pt`;
+
+    // Identifica o utilizador na sessão RUM â†’ aparece no Session Replay
+    rum.identify(email);
+
+    // Propriedades de sessão — visíveis no RUM dashboard
+    rum.sessionProp({
+      stringProperties: {
+        perfil_cliente:  "premium",
+        canal_acesso:    "homebanking",
+        user_id:         user,
+        conta_iban:      ibanOrigem.substring(0, 8) + "****",
+      },
+      longProperties: {
+        saldo_inicial: 1243580,  // em cÃªntimos para evitar float
+      },
+    });
+
+    rum.leave(actionId);
+
+    // Esconde overlay e mostra app
+    document.getElementById("login-overlay").classList.add("hidden");
+    document.getElementById("username-display").textContent = email;
+    document.getElementById("iban-display").textContent    = ibanOrigem;
+    document.getElementById("iban-header").textContent     = ibanOrigem.substring(0, 14) + "Â·Â·Â·";
+    document.getElementById("rum-status").textContent      = rum.isLoaded() ? email : "sem agente";
+
+    rum.page("Conta Ã  Ordem — Dashboard");
+    verificarGateway();
+    mostrarToast(`Bem-vindo, ${user}!`, "success", "ðŸ‘¤");
+
+  } else {
+    rum.error("Login Falhado — Credenciais Inválidas", `user=${user} pais=${resultado.pais || "?"}`);
+    rum.leave(actionId);
+    mostrarErroLogin();
+  }
+}
+
+function mostrarErroLogin() {
+  const el = document.getElementById("login-error");
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 3000);
+}
+
+// â”€â”€â”€ Navegação de tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const TAB_NAMES = {
+  mbway: "MB WAY", multibanco: "Multibanco", sepa: "SEPA",
+  cartao: "Cartão", historico: "Histórico de Transações",
+};
+
+function abrirAba(aba) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+  document.getElementById("tab-" + aba).classList.add("active");
+  const idx = ["mbway","multibanco","sepa","cartao","historico"].indexOf(aba);
+  document.querySelectorAll(".tab")[idx]?.classList.add("active");
+
+  // RUM: cada tab é uma "página" na SPA — aparece no funil de navegação
+  rum.page(TAB_NAMES[aba] || aba);
+}
+
+// â”€â”€â”€ Confirmação de operações â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function pedirConfirmacao(canal) {
+  let valor, descricao, destino = "";
+
+  if (canal === "mbway") {
+    valor = parseFloat(document.getElementById("mbway-valor").value) || 25;
+    descricao = `TransferÃªncia MB WAY`;
+    destino = document.getElementById("mbway-phone").value;
+  } else if (canal === "multibanco") {
+    valor = parseFloat(document.getElementById("mb-valor").value) || 48.50;
+    descricao = `Pagamento Multibanco`;
+    destino = `Entidade ${document.getElementById("mb-entidade").value}`;
+  } else if (canal === "sepa") {
+    valor = parseFloat(document.getElementById("sepa-valor").value) || 250;
+    const tipo = document.getElementById("sepa-tipo").value;
+    canal = tipo;
+    descricao = tipo === "sepa_urgente" ? "SEPA Urgente" : "TransferÃªncia SEPA";
+    destino = document.getElementById("sepa-iban").value;
+  } else if (canal === "cartao") {
+    valor = parseFloat(document.getElementById("cartao-valor").value) || 67.30;
+    const tipo = document.getElementById("cartao-tipo").value;
+    canal = tipo;
+    descricao = tipo === "cartao_credito" ? "Crédito" : "Débito";
+    destino = document.getElementById("cartao-loja").value;
+  }
+
+  pendingOp = { canal, valor, descricao, destino };
+
+  document.getElementById("confirm-desc").textContent    = descricao;
+  document.getElementById("confirm-valor").textContent   = `â‚¬ ${valor.toFixed(2)}`;
+  document.getElementById("confirm-destino").textContent = destino;
+  document.getElementById("confirm-modal").classList.add("show");
+
+  // RUM: captura que o utilizador chegou ao ecrã de confirmação
+  rum.page(`Confirmação — ${descricao}`);
+}
+
+function cancelarConfirmacao() {
+  document.getElementById("confirm-modal").classList.remove("show");
+  rum.error("Transação Cancelada pelo Utilizador", `canal=${pendingOp?.canal}`);
+  pendingOp = null;
+  rum.page(TAB_NAMES["mbway"]);
+}
+
+document.getElementById("confirm-yes").addEventListener("click", async () => {
+  document.getElementById("confirm-modal").classList.remove("show");
+  if (pendingOp) await executarConfirmada(pendingOp);
+});
+
+// â”€â”€â”€ Execução de transação â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function executarConfirmada({ canal, valor, descricao }) {
+  await realizarTransacao({ canal, valor_eur: valor, iban_origem: ibanOrigem }, descricao, valor);
+}
+
+async function realizarTransacao(body, descricao, valor) {
+  const canal    = body.canal || "mbway";
+  const actionId = rum.enter(`Transação ${descricao} €${valor.toFixed(2)}`);
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/transaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    registarResultado({
+      hora: new Date(), canal: data.canal || canal, valor: data.valor_eur || valor,
+      status: data.status, latencia: data.latencia_ms,
+      trace_id: data.trace_id, error_code: data.error_code,
+    });
+
+    if (data.status === "success") {
+      mostrarToast(`${descricao} concluída com sucesso — â‚¬${valor.toFixed(2)}`, "success", "âœ…");
+      animarSaldo(-valor);
+    } else if (data.status === "blocked") {
+      mostrarToast(`Operação bloqueada por fraude — score elevado`, "error", "ðŸš¨");
+      rum.error("Transação Bloqueada — Fraude Detetada", `canal=${canal} valor=${valor} error=${data.error_code}`);
+    } else {
+      mostrarToast(`Erro: ${data.error_code || "Falha desconhecida"}`, "error", "âŒ");
+      rum.error("Falha em Transação Bancária", `error_code=${data.error_code} canal=${canal}`);
+    }
+  } catch (err) {
+    registarResultado({ hora: new Date(), canal, valor, status: "error", error_code: "NETWORK_ERROR" });
+    mostrarToast(`Erro de rede: ${err.message}`, "error", "ðŸ”Œ");
+    rum.error("Erro de Rede — API Gateway", err.message);
+  } finally {
+    rum.leave(actionId);
+  }
+}
+
+// â”€â”€â”€ Login simulado (botão "Simular Login") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function simularLogin() {
+  const actionId = rum.enter("Simular Tentativa de Login");
+  const metodos  = ["PIN", "biometrico", "chave_digital", "token_sms"];
+  try {
+    const res  = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metodo: metodos[Math.floor(Math.random() * metodos.length)] }),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      mostrarToast(`Login simulado OK — método: ${data.metodo}`, "info", "ðŸ”");
+    } else {
+      mostrarToast(`Login simulado FALHOU — país: ${data.pais || "?"}`, "warning", "âš ï¸");
+      rum.error("Login Simulado — Falha de Autenticação", `pais=${data.pais}`);
+    }
+  } catch (err) {
+    rum.error("Erro Rede — Login Simulado", err.message);
+  } finally {
+    rum.leave(actionId);
+    totalEnviados++;
+    document.getElementById("cnt-enviados").textContent = totalEnviados;
+  }
+}
+
+// â”€â”€â”€ Fraude manual â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function simularFraudeManual() {
+  const valor    = Math.round(Math.random() * 9000 + 1000) / 10;
+  const actionId = rum.enter(`Verificação de Fraude — €${valor.toFixed(2)}`);
+  try {
+    const res  = await fetch(`${API_BASE}/api/transaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ canal: "sepa", valor_eur: valor, iban_origem: ibanOrigem }),
+    });
+    const data = await res.json();
+    registarResultado({
+      hora: new Date(), canal: "sepa", valor, status: data.status,
+      latencia: data.latencia_ms, trace_id: data.trace_id, error_code: data.error_code,
+    });
+    if (data.status === "blocked") {
+      mostrarToast(`Fraude simulada bloqueada — â‚¬${valor.toFixed(2)}`, "warning", "ðŸ›¡ï¸");
+    } else {
+      mostrarToast(`Transação de alto risco passou — score baixo`, "info", "âš ï¸");
+    }
+  } catch (err) {
+    rum.error("Erro Fraude Manual", err.message);
+  } finally {
+    rum.leave(actionId);
+  }
+}
+
+// â”€â”€â”€ Histórico â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function registarResultado(tx) {
+  totalEnviados++;
+  if (tx.status === "error" || tx.status === "blocked") totalErros++;
+  if (tx.status === "success" && tx.valor) totalValor += tx.valor;
+  document.getElementById("cnt-enviados").textContent = totalEnviados;
+  document.getElementById("cnt-erros").textContent    = totalErros;
+  document.getElementById("cnt-valor").textContent    = Math.round(totalValor);
+  historico.unshift(tx);
+  if (historico.length > 50) historico.pop();
+  renderizarHistorico();
+}
+
+function renderizarHistorico() {
+  const tbody = document.getElementById("history-body");
+  if (!historico.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sem transações ainda</td></tr>';
+    return;
+  }
+  tbody.innerHTML = historico.map(tx => {
+    const hora  = tx.hora ? tx.hora.toLocaleTimeString("pt-PT") : "—";
+    const valor = tx.valor != null ? `â‚¬${parseFloat(tx.valor).toFixed(2)}` : "—";
+    const lat   = tx.latencia != null ? `${tx.latencia}ms` : "—";
+    const badge = { success: '<span class="badge badge-success">âœ“ Sucesso</span>', error: '<span class="badge badge-error">âœ— Erro</span>', blocked: '<span class="badge badge-blocked">âš  Bloqueada</span>' }[tx.status] || "";
+    let traceCell = "—";
+    if (tx.trace_id) {
+      const dtUrl = DT_TENANT && !DT_TENANT.startsWith("${")
+        ? `${DT_TENANT}/#transactions;gtf=-30m;gf=all;traceId=${tx.trace_id}`
+        : "#";
+      traceCell = `<a class="trace-link" href="${dtUrl}" target="_blank">${tx.trace_id.substring(0,16)}…</a>`;
+    }
+    return `<tr><td>${hora}</td><td>${(tx.canal||"").replace("_"," ")}</td><td>${valor}</td><td>${badge}${tx.error_code ? `<br><small style="color:#888">${tx.error_code}</small>` : ""}</td><td>${lat}</td><td>${traceCell}</td></tr>`;
+  }).join("");
+}
+
+// â”€â”€â”€ Modo automático â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const CANAIS_AUTO = [
+  { canal: "mbway",          peso: 32, min: 5,   max: 500  },
+  { canal: "multibanco",     peso: 22, min: 10,  max: 200  },
+  { canal: "sepa",           peso: 10, min: 50,  max: 5000 },
+  { canal: "cartao_debito",  peso: 18, min: 5,   max: 300  },
+  { canal: "cartao_credito", peso: 10, min: 10,  max: 800  },
+  { canal: "app_mobile",     peso: 8,  min: 5,   max: 200  },
+];
+
+function escolherCanal() {
+  const total = CANAIS_AUTO.reduce((s, c) => s + c.peso, 0);
+  let r = Math.random() * total;
+  for (const c of CANAIS_AUTO) { r -= c.peso; if (r <= 0) return c; }
+  return CANAIS_AUTO[0];
+}
+
+function toggleAuto() {
+  const on = document.getElementById("auto-toggle").checked;
+  if (on) {
+    const rate  = parseInt(document.getElementById("rate-slider").value, 10);
+    const delay = 1000 / rate;
+    document.getElementById("auto-status").style.display = "inline";
+    document.getElementById("auto-rate-display").textContent = rate;
+    autoInterval = setInterval(async () => {
+      const roll = Math.random();
+      if (roll < 0.70) {
+        const c = escolherCanal();
+        const v = Math.round((Math.random() * (c.max - c.min) + c.min) * 100) / 100;
+        await realizarTransacao({ canal: c.canal, valor_eur: v, iban_origem: ibanOrigem }, c.canal, v);
+      } else if (roll < 0.90) {
+        await simularLogin();
+      } else {
+        await simularFraudeManual();
+      }
+    }, delay);
+  } else {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    document.getElementById("auto-status").style.display = "none";
+  }
+}
+
+// â”€â”€â”€ Toast notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function mostrarToast(msg, tipo, icon) {
+  const el = document.createElement("div");
+  el.className = `toast ${tipo}`;
+  el.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  document.getElementById("toast-container").appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// â”€â”€â”€ Animação de saldo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+let saldoAtual = 12435.80;
+function animarSaldo(delta) {
+  saldoAtual += delta;
+  const el = document.getElementById("saldo-display");
+  el.style.color = delta < 0 ? "var(--vermelho)" : "var(--verde)";
+  el.textContent = `â‚¬ ${saldoAtual.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}`;
+  setTimeout(() => el.style.color = "var(--verde)", 2000);
+}
+
+// â”€â”€â”€ Utilitários â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function gerarIBAN() {
+  const bancos = ["0010", "0035", "0036", "0018"];
+  return `PT50${bancos[Math.floor(Math.random()*bancos.length)]}${Array.from({length:19},()=>Math.floor(Math.random()*10)).join("")}`;
+}
+
+function mostrarPerfil() {
+  if (currentUser) mostrarToast(`Sessão: ${currentUser}@bancoatlantico.pt`, "info", "ðŸ‘¤");
+}
+
+function verificarGateway() {
+  fetch("/healthz").then(r => {
+    document.getElementById("gw-status").textContent = r.ok ? "conectado" : "degradado";
+    document.getElementById("gw-status").style.color = r.ok ? "#81ecec" : "#ff7675";
+  }).catch(() => {
+    document.getElementById("gw-status").textContent = "offline";
+    document.getElementById("gw-status").style.color = "#ff7675";
+  });
+}
+
+// Permitir Enter no login
+document.getElementById("login-pin").addEventListener("keydown", e => {
+  if (e.key === "Enter") fazerLogin();
+});
+
+// RUM: page view inicial
+rum.page("Login");
+</script>
+</body>
+</html>

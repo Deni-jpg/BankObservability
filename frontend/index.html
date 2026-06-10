@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banco Atlântico — Demo Observabilidade</title>
+
+  <script type="text/javascript" src="https://dok.js-cdn.dynatrace.com/jstag/19e225aa390/bf71124pqh/810375f9aaf6906c_complete.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --azul:    #0a3d6b;
+      --azul-c:  #1565c0;
+      --verde:   #1b7a3e;
+      --vermelho:#c0392b;
+      --laranja: #d35400;
+      --cinza:   #f5f6fa;
+      --borda:   #dee2e6;
+      --texto:   #2d3436;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--cinza);
+      color: var(--texto);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--azul) 0%, var(--azul-c) 100%);
+      color: white;
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: .5px; }
+    .user-info { font-size: .85rem; opacity: .9; text-align: right; }
+    .user-info strong { display: block; font-size: 1rem; }
+
+    main {
+      max-width: 1340px;
+      margin: 24px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      padding: 20px;
+    }
+
+    h2 { font-size: 1rem; font-weight: 600; color: var(--azul); margin-bottom: 14px; border-bottom: 2px solid var(--cinza); padding-bottom: 8px; }
+    h3 { font-size: .9rem; font-weight: 600; margin-bottom: 10px; color: #555; }
+
+    .balance {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--verde);
+      text-align: center;
+      margin: 8px 0 4px;
+    }
+    .iban-display {
+      text-align: center;
+      font-size: .78rem;
+      color: #777;
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    button {
+      padding: 10px 12px;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      transition: all .15s;
+    }
+    button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-blue   { background: var(--azul-c); color: white; }
+    .btn-green  { background: var(--verde);  color: white; }
+    .btn-red    { background: var(--vermelho); color: white; }
+    .btn-orange { background: var(--laranja); color: white; }
+    .btn-gray   { background: #636e72; color: white; }
+    .btn-dark   { background: var(--azul);   color: white; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .stat {
+      text-align: center;
+      background: var(--cinza);
+      border-radius: 7px;
+      padding: 8px 4px;
+    }
+    .stat-val { font-size: 1.3rem; font-weight: 700; color: var(--azul-c); }
+    .stat-lbl { font-size: .7rem; color: #888; margin-top: 2px; }
+
+    .auto-panel {
+      background: var(--cinza);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .auto-panel label { font-size: .8rem; color: #555; display: block; margin-bottom: 6px; }
+    .auto-panel input[type=range] { width: 100%; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+    /* Toggle switch */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider-sw {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #ccc; border-radius: 24px; transition: .3s;
+    }
+    .slider-sw:before {
+      content: ""; position: absolute;
+      width: 18px; height: 18px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: .3s;
+    }
+    input:checked + .slider-sw { background: var(--azul-c); }
+    input:checked + .slider-sw:before { transform: translateX(20px); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tab {
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--cinza);
+      color: #555;
+      border: 1px solid var(--borda);
+    }
+    .tab.active { background: var(--azul-c); color: white; border-color: var(--azul-c); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .8rem; color: #666; margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--borda);
+      border-radius: 6px;
+      font-size: .88rem;
+      transition: border .2s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--azul-c);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 11px;
+      font-size: .9rem;
+      border-radius: 7px;
+      margin-top: 6px;
+    }
+
+    /* Transaction history */
+    .history-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .history-table th {
+      background: var(--azul);
+      color: white;
+      padding: 9px 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .history-table td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .history-table tr:hover td { background: #f8f9fa; }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: .73rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-error   { background: #f8d7da; color: #721c24; }
+    .badge-blocked { background: #fff3cd; color: #856404; }
+    .badge-pending { background: #d1ecf1; color: #0c5460; }
+
+    .trace-link {
+      font-size: .7rem;
+      color: var(--azul-c);
+      text-decoration: none;
+      font-family: monospace;
+    }
+    .trace-link:hover { text-decoration: underline; }
+
+    .status-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--azul);
+      color: white;
+      font-size: .78rem;
+      padding: 6px 20px;
+      display: flex;
+      gap: 24px;
+      z-index: 100;
+    }
+    .status-bar span { opacity: .85; }
+    .status-bar strong { opacity: 1; }
+
+    #log-msg {
+      font-size: .78rem;
+      color: #555;
+      background: var(--cinza);
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-height: 36px;
+      margin-top: 10px;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+    /* ── Toast sucesso (canto) ─────────────────────────────────────── */
+    #toast-ok {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      background: #1b7a3e; color: white;
+      padding: 10px 16px; border-radius: 8px;
+      font-size: .82rem; font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
+      display: flex; align-items: center; gap: 8px;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+    #toast-ok.show { opacity: 1; transform: none; }
+
+    /* ── Alerta de erro (centro, proeminente) ──────────────────────── */
+    #err-alert {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: #c0392b; color: white;
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .9rem; font-weight: 600;
+      box-shadow: 0 2px 12px rgba(0,0,0,.3);
+      transform: translateY(-100%);
+      transition: transform .3s ease;
+    }
+    #err-alert.show { transform: none; }
+    #err-alert .ea-msg { display: flex; align-items: center; gap: 10px; }
+    #err-alert .ea-close { cursor: pointer; opacity: .8; font-size: 1.2rem; padding: 0 4px; }
+    #err-alert .ea-close:hover { opacity: 1; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+
+    /* ── Login overlay ─────────────────────────────────────────────── */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: linear-gradient(135deg, var(--azul) 0%, var(--azul-c) 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-card {
+      background: white; border-radius: 14px; padding: 40px 36px;
+      width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .login-card h2 { text-align: center; color: var(--azul); font-size: 1.6rem; margin-bottom: 6px; }
+    .login-subtitle { text-align: center; color: #888; font-size: .85rem; margin-bottom: 28px; }
+    .login-field { margin-bottom: 16px; }
+    .login-field label { display: block; font-size: .8rem; color: #555; margin-bottom: 5px; font-weight: 600; }
+    .login-field input {
+      width: 100%; padding: 11px 14px; border: 1px solid var(--borda);
+      border-radius: 8px; font-size: .9rem; transition: border .2s;
+    }
+    .login-field input:focus { outline: none; border-color: var(--azul-c); }
+    .login-btn {
+      width: 100%; padding: 13px; background: var(--azul-c); color: white;
+      border: none; border-radius: 8px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; margin-top: 8px; transition: background .2s;
+    }
+    .login-btn:hover { background: var(--azul); }
+    .login-error { color: var(--vermelho); font-size: .82rem; text-align: center; margin-top: 10px; display: none; }
+
+    .error-sim-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .btn-err  { background: #c0392b; color: #fff; font-size: .75rem; padding: 8px 4px; }
+    .btn-warn { background: #d35400; color: #fff; font-size: .75rem; padding: 8px 4px; }
+    .btn-info { background: #2980b9; color: #fff; font-size: .75rem; padding: 8px 4px; }
+
+    .err-feed { max-height: 140px; overflow-y: auto; }
+    .err-item {
+      display: flex; gap: 6px; align-items: flex-start;
+      padding: 6px 8px; margin-bottom: 4px;
+      background: #fff5f5; border-left: 3px solid #c0392b;
+      border-radius: 4px; font-size: .73rem;
+      animation: pop .25s ease;
+    }
+    .err-item.warn { background: #fff9f0; border-color: #d35400; }
+    .err-item .ei-time { color: #bbb; flex-shrink: 0; font-family: monospace; }
+    .err-item .ei-body { color: #555; }
+    .err-item .ei-name { font-weight: 700; color: #c0392b; }
+    .err-item.warn .ei-name { color: #d35400; }
+    @keyframes pop { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:none} }
+    .feed-empty { color: #ccc; font-size: .75rem; text-align: center; padding: 14px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div class="login-card">
+    <h2>🏦 Banco Atlântico</h2>
+    <p class="login-subtitle">Acesso Seguro — Homebanking</p>
+    <div class="login-field">
+      <label>Utilizador</label>
+      <input type="text" id="login-user" placeholder="joao.silva" value="joao.silva" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Código PIN</label>
+      <input type="password" id="login-pin" placeholder="••••••" value="123456"
+             data-dtrum-input-type="sensitive" autocomplete="current-password">
+    </div>
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-error" id="login-error">Credenciais inválidas. Tente novamente.</div>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>🏦 Banco Atlântico</h1>
+    <div style="font-size:.75rem;opacity:.7;">Demo · Observabilidade Full-Stack com Dynatrace</div>
+  </div>
+  <div class="user-info">
+    <strong id="username-display">João Silva</strong>
+    <span id="iban-header">PT50 0010 0000 ···</span>
+  </div>
+</header>
+
+<!-- Alerta de erro (barra no topo) -->
+<div id="err-alert">
+  <div class="ea-msg"><span>⚠️</span><span id="err-alert-txt">Erro</span></div>
+  <span class="ea-close" onclick="closeErrAlert()">✕</span>
+</div>
+
+<main>
+  <!-- ── PAINEL ESQUERDO ──────────────────────────────────────────── -->
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <h2>Conta à Ordem</h2>
+      <div class="balance" id="saldo-display">€ 12.435,80</div>
+      <div class="iban-display" id="iban-display">Carregando IBAN...</div>
+
+      <div class="btn-grid">
+        <button class="btn-blue"   onclick="abrirAba('mbway')">📱 MB WAY</button>
+        <button class="btn-gray"   onclick="abrirAba('multibanco')">🏧 Multibanco</button>
+        <button class="btn-green"  onclick="abrirAba('sepa')">🌍 SEPA</button>
+        <button class="btn-dark"   onclick="abrirAba('cartao')">💳 Cartão</button>
+        <button class="btn-orange" onclick="simularLogin()">🔐 Login</button>
+        <button class="btn-red"    onclick="simularFraudeManual()">🚨 Fraude</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-val" id="cnt-enviados">0</div>
+          <div class="stat-lbl">Eventos</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="cnt-erros" style="color:var(--vermelho)">0</div>
+          <div class="stat-lbl">Erros</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="cnt-valor">0</div>
+          <div class="stat-lbl">€ Total</div>
+        </div>
+      </div>
+
+      <div id="log-msg">Pronto. Inicie uma operação acima.</div>
+    </div>
+
+    <!-- Auto Mode -->
+    <div class="card">
+      <h2>⚡ Modo Automático</h2>
+      <div class="auto-panel">
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="auto-toggle" onchange="toggleAuto()">
+            <span class="slider-sw"></span>
+          </label>
+          <span style="font-size:.85rem;font-weight:600">Geração Contínua de Tráfego</span>
+        </div>
+        <label>Velocidade: <strong><span id="rate-display">10</span> op/s</strong></label>
+        <input type="range" id="rate-slider" min="1" max="40" value="10"
+               oninput="document.getElementById('rate-display').textContent=this.value">
+        <div style="font-size:.73rem;color:#888;margin-top:8px">
+          Mix: 70% transações · 20% logins · 10% verificações de fraude
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynatrace Demo Tools -->
+    <div class="card" style="margin-top:16px;border-top:3px solid var(--azul-c)">
+      <h2 style="color:#555;border-color:#eee">🔬 Dynatrace — Simular Eventos</h2>
+      <div class="error-sim-grid">
+        <button class="btn-err"  onclick="simJSError()">💥 JS Error</button>
+        <button class="btn-warn" onclick="simTimeout()">⏱ DB Timeout</button>
+        <button class="btn-info" onclick="simHTTP500()">🔥 HTTP 500</button>
+      </div>
+      <div style="font-size:.68rem;color:#aaa;margin-bottom:8px;line-height:1.5">
+        JS Error → <b>Frontend · Errors</b> &nbsp;|&nbsp; Timeout + HTTP 500 → <b>Distributed Traces + Logs</b>
+      </div>
+      <div class="err-feed" id="err-feed">
+        <div class="feed-empty">Nenhum erro simulado ainda</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAINEL DIREITO ───────────────────────────────────────────── -->
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="tabs">
+        <div class="tab active" onclick="abrirAba('mbway')">📱 MB WAY</div>
+        <div class="tab" onclick="abrirAba('multibanco')">🏧 Multibanco</div>
+        <div class="tab" onclick="abrirAba('sepa')">🌍 SEPA</div>
+        <div class="tab" onclick="abrirAba('cartao')">💳 Cartão</div>
+        <div class="tab" onclick="abrirAba('historico')">📋 Histórico</div>
+      </div>
+
+      <!-- MB WAY -->
+      <div id="tab-mbway" class="tab-content active">
+        <h3>Transferência MB WAY</h3>
+        <div class="form-group">
+          <label>Telemóvel do Destinatário</label>
+          <input type="text" id="mbway-phone" placeholder="+351 912 345 678" value="+351 912 345 678">
+        </div>
+        <div class="form-group">
+          <label>Montante (€)</label>
+          <input type="number" id="mbway-valor" placeholder="0.00" value="25.00" min="0.01" max="1000">
+        </div>
+        <button class="submit-btn btn-blue" onclick="executar('mbway')">Enviar via MB WAY</button>
+      </div>
+
+      <!-- MULTIBANCO -->
+      <div id="tab-multibanco" class="tab-content">
+        <h3>Pagamento Multibanco</h3>
+        <div class="form-group">
+          <label>Entidade</label>
+          <input type="text" id="mb-entidade" placeholder="11249" value="11249">
+        </div>
+        <div class="form-group">
+          <label>Referência</label>
+          <input type="text" id="mb-ref" placeholder="123 456 789" value="123 456 789">
+        </div>
+        <div class="form-group">
+          <label>Montante (€)</label>
+          <input type="number" id="mb-valor" placeholder="0.00" value="48.50" min="0.01">
+        </div>
+        <button class="submit-btn btn-gray" onclick="executar('multibanco')">Pagar Referência</button>
+      </div>
+
+      <!-- SEPA -->
+      <div id="tab-sepa" class="tab-content">
+        <h3>Transferência SEPA</h3>
+        <div class="form-group">
+          <label>IBAN Destinatário</label>
+          <input type="text" id="sepa-iban" placeholder="PT50 0000 0000 0000 0000 0000 0" value="PT50 0035 0000 0000 0000 0000 0">
+        </div>
+        <div class="form-group">
+          <label>Montante (€)</label>
+          <input type="number" id="sepa-valor" placeholder="0.00" value="250.00" min="0.01">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="sepa-tipo">
+            <option value="sepa">SEPA Normal (1-2 dias úteis)</option>
+            <option value="sepa_urgente">SEPA Urgente (mesmo dia)</option>
+          </select>
+        </div>
+        <button class="submit-btn btn-green" onclick="executar('sepa')">Transferir SEPA</button>
+      </div>
+
+      <!-- CARTÃO -->
+      <div id="tab-cartao" class="tab-content">
+        <h3>Pagamento com Cartão</h3>
+        <div class="form-group">
+          <label>Tipo de Cartão</label>
+          <select id="cartao-tipo">
+            <option value="cartao_debito">Cartão de Débito</option>
+            <option value="cartao_credito">Cartão de Crédito</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estabelecimento</label>
+          <input type="text" id="cartao-loja" placeholder="Supermercado Continente" value="Supermercado Continente">
+        </div>
+        <div class="form-group">
+          <label>Montante (€)</label>
+          <input type="number" id="cartao-valor" placeholder="0.00" value="67.30" min="0.01">
+        </div>
+        <button class="submit-btn btn-dark" onclick="executar('cartao')">Pagar com Cartão</button>
+      </div>
+
+      <!-- HISTÓRICO -->
+      <div id="tab-historico" class="tab-content">
+        <h3>Últimas Transações (com Trace ID)</h3>
+        <div style="overflow-x:auto">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Canal</th>
+                <th>Valor €</th>
+                <th>Status</th>
+                <th>Latência</th>
+                <th>Trace (Dynatrace)</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sem transações ainda</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Toast sucesso -->
+<div id="toast-ok"><span>✓</span><span id="toast-ok-txt">Transação concluída</span></div>
+
+<!-- Status bar fixa no rodapé -->
+<div class="status-bar">
+  <span>🟢 API Gateway: <strong id="gw-status">conectado</strong></span>
+  <span>📡 OTel Collector: <strong>ativo</strong></span>
+  <span>🏦 Tenant: <strong id="tenant-short">${DT_TENANT}</strong></span>
+  <span id="auto-status" style="color:#81ecec;display:none">⚡ Auto: <strong id="auto-rate-display">—</strong> op/s</span>
+</div>
+
+<script>
+"use strict";
+
+// ─── Configuração ─────────────────────────────────────────────────────────────
+const DT_TENANT = "${DT_TENANT}";
+const API_BASE   = "";  // Proxy nginx: /api/* → api-gateway:8000
+
+// Estado global
+let totalEnviados = 0;
+let totalErros    = 0;
+let totalValor    = 0;
+let historico     = [];
+let autoInterval  = null;
+let ibanOrigem    = gerarIBAN();
+
+// ─── RUM helpers — são no-ops seguros se o agente não estiver carregado ──────
+function rumIdentify(userId) {
+  if (window.dtrum) window.dtrum.identifyUser(userId);
+}
+function rumEnterAction(name) {
+  return window.dtrum ? window.dtrum.enterAction(name) : null;
+}
+function rumLeaveAction(id) {
+  if (window.dtrum && id != null) window.dtrum.leaveAction(id);
+}
+function rumError(name, msg) {
+  if (window.dtrum) window.dtrum.reportCustomError(name, msg, false);
+}
+
+// ─── Login ───────────────────────────────────────────────────────────────────
+async function fazerLogin() {
+  const user = document.getElementById("login-user").value.trim() || "joao.silva";
+  const pin  = document.getElementById("login-pin").value;
+  const actionId = rumEnterAction("Login Bancário");
+  try {
+    const res  = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metodo: "PIN", user_id: user }),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      const email = `${user}@bancoatlantico.pt`;
+      rumIdentify(email);
+      document.getElementById("login-overlay").classList.add("hidden");
+      document.getElementById("username-display").textContent = email;
+      document.getElementById("iban-display").textContent     = ibanOrigem;
+      document.getElementById("iban-header").textContent      = ibanOrigem.substring(0, 16) + "···";
+      showSuccess(`Bem-vindo, ${user}!`);
+    } else {
+      rumError("Falha de Autenticação", `user=${user}`);
+      const el = document.getElementById("login-error");
+      el.style.display = "block";
+      setTimeout(() => el.style.display = "none", 3000);
+    }
+  } catch(e) {
+    rumError("Erro Rede Login", e.message);
+  } finally {
+    rumLeaveAction(actionId);
+  }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !document.getElementById("login-overlay").classList.contains("hidden"))
+    fazerLogin();
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(function init() {
+  fetch("/healthz")
+    .then(r => r.ok ? "conectado" : "degradado")
+    .catch(() => "offline")
+    .then(s => {
+      document.getElementById("gw-status").textContent = s;
+      document.getElementById("gw-status").style.color = s === "conectado" ? "#81ecec" : "#ff7675";
+    });
+})();
+
+// ─── Navegação de abas ────────────────────────────────────────────────────────
+function abrirAba(aba) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+  document.getElementById("tab-" + aba).classList.add("active");
+  const tabs = ["mbway", "multibanco", "sepa", "cartao", "historico"];
+  const idx  = tabs.indexOf(aba);
+  document.querySelectorAll(".tab")[idx]?.classList.add("active");
+}
+
+// ─── Executa transação via API Gateway ───────────────────────────────────────
+async function executar(canal) {
+  let valor, body;
+
+  if (canal === "mbway") {
+    valor = parseFloat(document.getElementById("mbway-valor").value) || 25;
+    body  = { canal: "mbway", valor_eur: valor, iban_origem: ibanOrigem };
+  } else if (canal === "multibanco") {
+    valor = parseFloat(document.getElementById("mb-valor").value) || 48.50;
+    body  = { canal: "multibanco", valor_eur: valor, iban_origem: ibanOrigem };
+  } else if (canal === "sepa") {
+    valor = parseFloat(document.getElementById("sepa-valor").value) || 250;
+    const tipo = document.getElementById("sepa-tipo").value;
+    body  = {
+      canal: tipo,
+      valor_eur: valor,
+      iban_origem: ibanOrigem,
+      iban_destino: document.getElementById("sepa-iban").value.replace(/\s/g, ""),
+    };
+  } else if (canal === "cartao") {
+    valor = parseFloat(document.getElementById("cartao-valor").value) || 67.30;
+    const tipo = document.getElementById("cartao-tipo").value;
+    body  = { canal: tipo, valor_eur: valor, iban_origem: ibanOrigem };
+  } else {
+    valor = Math.round(Math.random() * 490 + 10) / 10;
+    body  = { canal, valor_eur: valor, iban_origem: ibanOrigem };
+  }
+
+  return realizarTransacao(body, canal, valor);
+}
+
+async function realizarTransacao(body, canal, valor) {
+  setLog(`⏳ Processando ${canal.toUpperCase()} de €${valor.toFixed(2)}…`);
+  const actionId = rumEnterAction(`Transação ${canal}`);
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/transaction`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    registarResultado({
+      hora:      new Date(),
+      canal:     data.canal || canal,
+      valor:     data.valor_eur || valor,
+      status:    data.status,
+      latencia:  data.latencia_ms,
+      trace_id:  data.trace_id,
+      error_code:data.error_code,
+    });
+
+    if (data.status === "success") {
+      setLog(`✅ ${canal.toUpperCase()} €${valor.toFixed(2)} | ${data.latencia_ms}ms`);
+      showSuccess(`${canal.toUpperCase()} €${valor.toFixed(2)} processado com sucesso`);
+    } else if (data.status === "blocked") {
+      setLog(`🚨 BLOQUEADA por fraude | Trace: ${(data.trace_id||"").substring(0,16)}…`);
+      showError(`Transação bloqueada por fraude — Score de risco elevado (canal: ${canal}, valor: €${valor.toFixed(2)})`);
+      rumError("Transação Bloqueada por Fraude", `Canal: ${canal} | Valor: ${valor}`);
+    } else {
+      const code = data.error_code || "UNKNOWN";
+      setLog(`❌ ${code} | Trace: ${(data.trace_id||"").substring(0,16)}…`);
+      showError(`Falha na transação: ${code} (canal: ${canal})`);
+      rumError("Falha em Transação", code);
+    }
+  } catch (err) {
+    registarResultado({ hora: new Date(), canal, valor, status: "error", error_code: "NETWORK_ERROR" });
+    setLog(`❌ Erro de rede: ${err.message}`);
+    showError(`Erro de rede: ${err.message}`);
+    rumError("Erro de Rede", err.message);
+  } finally {
+    rumLeaveAction(actionId);
+  }
+}
+
+// ─── Login via API ────────────────────────────────────────────────────────────
+async function simularLogin() {
+  setLog("⏳ Autenticando…");
+  const actionId = rumEnterAction("Login Bancário");
+  const metodos  = ["PIN", "biometrico", "chave_digital", "token_sms"];
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/auth/login`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ metodo: metodos[Math.floor(Math.random() * metodos.length)] }),
+    });
+    const data = await res.json();
+
+    if (data.status === "success") {
+      setLog(`✅ Login OK | Método: ${data.metodo}`);
+      showSuccess(`Autenticação bem-sucedida via ${data.metodo}`);
+      rumIdentify(data.user_id || "joao.silva@bancoatlantico.pt");
+    } else {
+      setLog(`❌ Login FALHOU | País: ${data.pais || "?"}`);
+      showError(`Falha de autenticação — Acesso bloqueado (país de origem: ${data.pais || "desconhecido"})`);
+      rumError("Falha de Autenticação", data.error || "INVALID_CREDENTIALS");
+      totalErros++;
+      document.getElementById("cnt-erros").textContent = totalErros;
+    }
+  } catch (err) {
+    setLog(`❌ Erro de rede no login: ${err.message}`);
+    rumError("Erro Rede Login", err.message);
+  } finally {
+    rumLeaveAction(actionId);
+    totalEnviados++;
+    document.getElementById("cnt-enviados").textContent = totalEnviados;
+  }
+}
+
+// ─── Verificação de fraude manual ────────────────────────────────────────────
+async function simularFraudeManual() {
+  setLog("⏳ Simulando transação suspeita…");
+  const valor = Math.round(Math.random() * 9000 + 1000) / 10;
+  await realizarTransacao({
+    canal:       "mbway",
+    valor_eur:   valor,
+    iban_origem: ibanOrigem,
+  }, "mbway", valor);
+}
+
+// ─── Registo de resultado no histórico ───────────────────────────────────────
+function registarResultado(tx) {
+  totalEnviados++;
+  if (tx.status === "error" || tx.status === "blocked") totalErros++;
+  if (tx.status === "success" && tx.valor) totalValor += tx.valor;
+
+  document.getElementById("cnt-enviados").textContent = totalEnviados;
+  document.getElementById("cnt-erros").textContent    = totalErros;
+  document.getElementById("cnt-valor").textContent    = Math.round(totalValor);
+
+  historico.unshift(tx);
+  if (historico.length > 50) historico.pop();
+  renderizarHistorico();
+}
+
+function renderizarHistorico() {
+  const tbody = document.getElementById("history-body");
+  if (historico.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">Sem transações ainda</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = historico.map(tx => {
+    const hora = tx.hora ? tx.hora.toLocaleTimeString("pt-PT") : "—";
+    const valor = tx.valor != null ? `€${parseFloat(tx.valor).toFixed(2)}` : "—";
+    const lat   = tx.latencia != null ? `${tx.latencia}ms` : "—";
+    const badge = {
+      success: '<span class="badge badge-success">✓ Sucesso</span>',
+      error:   '<span class="badge badge-error">✗ Erro</span>',
+      blocked: '<span class="badge badge-blocked">⚠ Bloqueada</span>',
+    }[tx.status] || '<span class="badge badge-pending">?</span>';
+
+    let traceCell = "—";
+    if (tx.trace_id) {
+      const dtUrl = DT_TENANT && !DT_TENANT.startsWith("${")
+        ? `${DT_TENANT}/#transactions;gtf=-30m;gf=all;traceId=${tx.trace_id}`
+        : "#";
+      traceCell = `<a class="trace-link" href="${dtUrl}" target="_blank" title="${tx.trace_id}">${tx.trace_id.substring(0,16)}…</a>`;
+    }
+
+    return `<tr>
+      <td>${hora}</td>
+      <td>${(tx.canal||"").replace("_"," ")}</td>
+      <td>${valor}</td>
+      <td>${badge}${tx.error_code ? `<br><small style="color:#888">${tx.error_code}</small>` : ""}</td>
+      <td>${lat}</td>
+      <td>${traceCell}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ─── Modo automático ─────────────────────────────────────────────────────────
+const CANAIS_AUTO = [
+  { canal: "mbway",          peso: 32, minVal: 5,   maxVal: 500  },
+  { canal: "multibanco",     peso: 22, minVal: 10,  maxVal: 200  },
+  { canal: "sepa",           peso: 10, minVal: 50,  maxVal: 5000 },
+  { canal: "cartao_debito",  peso: 18, minVal: 5,   maxVal: 300  },
+  { canal: "cartao_credito", peso: 10, minVal: 10,  maxVal: 800  },
+  { canal: "app_mobile",     peso: 8,  minVal: 5,   maxVal: 200  },
+];
+
+function escolherCanal() {
+  const total = CANAIS_AUTO.reduce((s, c) => s + c.peso, 0);
+  let r = Math.random() * total;
+  for (const c of CANAIS_AUTO) {
+    r -= c.peso;
+    if (r <= 0) return c;
+  }
+  return CANAIS_AUTO[0];
+}
+
+function toggleAuto() {
+  const on = document.getElementById("auto-toggle").checked;
+  if (on) {
+    startAuto();
+  } else {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    document.getElementById("auto-status").style.display = "none";
+  }
+}
+
+function startAuto() {
+  if (autoInterval) clearInterval(autoInterval);
+  const rate  = parseInt(document.getElementById("rate-slider").value, 10);
+  const delay = 1000 / rate;
+
+  document.getElementById("auto-status").style.display = "inline";
+  document.getElementById("auto-rate-display").textContent = rate;
+
+  autoInterval = setInterval(async () => {
+    const roll = Math.random();
+    if (roll < 0.70) {
+      const c = escolherCanal();
+      const v = Math.round((Math.random() * (c.maxVal - c.minVal) + c.minVal) * 100) / 100;
+      await realizarTransacao({ canal: c.canal, valor_eur: v, iban_origem: ibanOrigem }, c.canal, v);
+    } else if (roll < 0.90) {
+      await simularLogin();
+    } else {
+      await simularFraudeManual();
+    }
+  }, delay);
+}
+
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+function gerarIBAN() {
+  const bancos = ["0010", "0035", "0036", "0018"];
+  const banco  = bancos[Math.floor(Math.random() * bancos.length)];
+  const resto  = Array.from({length: 19}, () => Math.floor(Math.random() * 10)).join("");
+  return `PT50${banco}${resto}`;
+}
+
+function setLog(msg) {
+  document.getElementById("log-msg").textContent = msg;
+}
+
+let toastTimer, alertTimer;
+
+function showSuccess(msg) {
+  const el = document.getElementById("toast-ok");
+  document.getElementById("toast-ok-txt").textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+function showError(msg) {
+  const el = document.getElementById("err-alert");
+  document.getElementById("err-alert-txt").textContent = msg;
+  el.classList.add("show");
+  clearTimeout(alertTimer);
+  alertTimer = setTimeout(() => el.classList.remove("show"), 6000);
+}
+
+function closeErrAlert() {
+  document.getElementById("err-alert").classList.remove("show");
+}
+
+// ─── Dynatrace Demo — Error Simulation ───────────────────────────────────────
+function feedError(name, detail, type) {
+  const feed = document.getElementById("err-feed");
+  const empty = feed.querySelector(".feed-empty");
+  if (empty) empty.remove();
+  const t = new Date().toLocaleTimeString("pt-PT");
+  const el = document.createElement("div");
+  el.className = "err-item" + (type === "warn" ? " warn" : "");
+  el.innerHTML = `<span class="ei-time">${t}</span><div><div class="ei-name">${name}</div><div class="ei-body">${detail}</div></div>`;
+  feed.insertBefore(el, feed.firstChild);
+  if (feed.children.length > 6) feed.lastChild.remove();
+  if (window.dtrum) window.dtrum.reportCustomError(name, detail, false);
+}
+
+function simJSError() {
+  // JS errors são client-side → aparecem em Dynatrace Frontend → Errors (não em Distributed Traces)
+  const msg = "TypeError: Cannot read properties of undefined (reading 'accountBalance')";
+  feedError("TypeError [RUM]", msg);
+  showError(`${msg} — visível em Dynatrace → Frontend → Errors`);
+  setLog("💥 Erro JS capturado pelo RUM (Frontend → Errors)");
+  if (window.dtrum) window.dtrum.reportCustomError("TypeError: UI Crash", msg, false);
+  // Lança erro real não tratado para o RUM capturar automaticamente
+  setTimeout(() => { const x = undefined; x.accountBalance.toFixed(2); }, 50);
+}
+
+async function simTimeout() {
+  setLog("⏱ A simular timeout na base de dados…");
+  const actionId = rumEnterAction("Demo — Database Timeout");
+  try {
+    const r = await fetch("/api/demo/timeout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = await r.json();
+    feedError("DB Timeout [504]", `payment-db:5432 — pool exhausted (50/50)`, "warn");
+    showError(`HTTP ${r.status}: ${data.code} — base de dados de pagamentos sem resposta (ver Distributed Traces + Logs)`);
+    if (window.dtrum) window.dtrum.reportCustomError(`HTTP ${r.status}: DatabaseTimeoutError`, data.code || "", false);
+    setLog(`⏱ HTTP ${r.status} — trace e log visíveis no Dynatrace`);
+  } catch(e) {
+    feedError("Network Error", e.message, "warn");
+    showError(`Erro de rede: ${e.message}`);
+  } finally {
+    rumLeaveAction(actionId);
+  }
+}
+
+async function simHTTP500() {
+  feedError("HTTP 500 — PaymentProcessingError", "POST /api/demo/crash — NullPointerException");
+  setLog("🔥 A crashar o backend — aparece em Distributed Traces + Logs");
+  const actionId = rumEnterAction("Demo — Backend Crash HTTP 500");
+  try {
+    const r = await fetch("/api/demo/crash", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = await r.json();
+    showError(`HTTP ${r.status}: ${data.code || "Internal Server Error"} — PaymentProcessor falhou (ver Distributed Traces + Logs)`);
+    if (window.dtrum) window.dtrum.reportCustomError(`HTTP ${r.status}: PaymentProcessingError`, data.code || "", false);
+    setLog(`🔥 HTTP ${r.status} — trace e log visíveis no Dynatrace`);
+  } catch(e) {
+    if (window.dtrum) window.dtrum.reportCustomError("Network Error: demo/crash", e.message, false);
+  } finally {
+    rumLeaveAction(actionId);
+  }
+}
+
+</script>
+</body>
+</html>

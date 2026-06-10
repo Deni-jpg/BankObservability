@@ -1,23 +1,22 @@
 """
-Servidor local para a app bancária demo.
-- Serve a interface HTML
-- Faz proxy dos eventos para o Dynatrace (evita CORS)
-- Lê configuração do .env (que está na pasta pai)
+Servidor Flask da app bancária — pronto para Docker.
+- Em Docker: lê env vars do container (docker-compose passa do .env do host)
+- Fora de Docker: lê do .env da pasta pai (modo dev local)
 """
 
 import os
 import sys
 from pathlib import Path
 
+# Tenta carregar .env da pasta pai (modo dev local)
+# Se já houver env vars do Docker, usa essas
 try:
     from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
 except ImportError:
-    print("⚠️  Falta python-dotenv. Roda: pip install -r ../requirements.txt")
-    sys.exit(1)
-
-# Carrega .env da pasta pai
-env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(env_path)
+    pass
 
 from flask import Flask, request, send_from_directory, jsonify
 import requests
@@ -27,7 +26,9 @@ DT_TOKEN  = os.getenv("DT_TOKEN") or ""
 PORT      = int(os.getenv("FLASK_PORT", "5000"))
 
 if not DT_TENANT or "XXXXXX" in DT_TOKEN or "COLA_O_TEU" in DT_TOKEN:
-    print(f"⚠️  Configura o .env primeiro! Caminho esperado: {env_path}")
+    print("⚠️  DT_TENANT ou DT_TOKEN não configurados!")
+    print(f"    DT_TENANT: {DT_TENANT or '(vazio)'}")
+    print(f"    DT_TOKEN: {'(definido)' if DT_TOKEN and 'XXXX' not in DT_TOKEN else '(em falta)'}")
     sys.exit(1)
 
 app = Flask(__name__, static_folder=".", static_url_path="")
@@ -53,6 +54,10 @@ def ingest():
         return jsonify({"status": r.status_code, "sent": len(eventos)}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/healthz")
+def health():
+    return jsonify({"status": "ok"}), 200
 
 
 if __name__ == "__main__":

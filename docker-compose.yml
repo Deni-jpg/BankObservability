@@ -1,0 +1,133 @@
+services:
+
+  # ─── OBSERVABILITY PIPELINE ──────────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.103.0
+    container_name: banco-otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otel/config.yaml:ro
+    environment:
+      DT_TENANT: ${DT_TENANT}
+      DT_TOKEN: ${DT_TOKEN}
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── FRONTEND ─────────────────────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: banco-frontend
+    ports:
+      - "3000:80"
+    environment:
+      DT_RUM_SCRIPT_SRC: ${DT_RUM_SCRIPT_SRC:-}
+      DT_TENANT: ${DT_TENANT}
+    depends_on: [api-gateway]
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── API GATEWAY ──────────────────────────────────────────────────────────────
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: banco-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      # OTel — configuração via env vars (opentelemetry-instrument lê automaticamente)
+      OTEL_SERVICE_NAME: banco-api-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: delta
+      OTEL_PYTHON_LOG_CORRELATION: "true"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=banco-atlantico,deployment.environment=demo
+      # Upstream services
+      AUTH_SERVICE_URL: http://auth-service:8001
+      TRANSACTION_SERVICE_URL: http://transaction-service:8002
+      FRAUD_SERVICE_URL: http://fraud-service:8003
+    depends_on: [otel-collector, auth-service, transaction-service, fraud-service]
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── AUTH SERVICE ─────────────────────────────────────────────────────────────
+  auth-service:
+    build: ./services/auth-service
+    container_name: banco-auth-service
+    environment:
+      OTEL_SERVICE_NAME: banco-auth-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: delta
+      OTEL_PYTHON_LOG_CORRELATION: "true"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=banco-atlantico,deployment.environment=demo
+      DT_TENANT: ${DT_TENANT}
+      DT_TOKEN: ${DT_TOKEN}
+      AUTH_FAILURE_RATE: "0.25"
+    depends_on: [otel-collector]
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── TRANSACTION SERVICE ──────────────────────────────────────────────────────
+  transaction-service:
+    build: ./services/transaction-service
+    container_name: banco-transaction-service
+    environment:
+      OTEL_SERVICE_NAME: banco-transaction-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: delta
+      OTEL_PYTHON_LOG_CORRELATION: "true"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=banco-atlantico,deployment.environment=demo
+      FRAUD_SERVICE_URL: http://fraud-service:8003
+      DT_TENANT: ${DT_TENANT}
+      DT_TOKEN: ${DT_TOKEN}
+    depends_on: [otel-collector, fraud-service]
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── FRAUD SERVICE ────────────────────────────────────────────────────────────
+  fraud-service:
+    build: ./services/fraud-service
+    container_name: banco-fraud-service
+    environment:
+      OTEL_SERVICE_NAME: banco-fraud-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: delta
+      OTEL_PYTHON_LOG_CORRELATION: "true"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=banco-atlantico,deployment.environment=demo
+      DT_TENANT: ${DT_TENANT}
+      DT_TOKEN: ${DT_TOKEN}
+    depends_on: [otel-collector]
+    networks: [banco-net]
+    restart: unless-stopped
+
+  # ─── TRAFFIC SIMULATOR ────────────────────────────────────────────────────────
+  simulator:
+    build: ./simulator
+    container_name: banco-simulator
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8000
+      EVENTS_PER_SECOND: ${EVENTS_PER_SECOND:-15}
+    depends_on: [api-gateway]
+    networks: [banco-net]
+    restart: unless-stopped
+    profiles: [simulator]
+
+networks:
+  banco-net:
+    driver: bridge

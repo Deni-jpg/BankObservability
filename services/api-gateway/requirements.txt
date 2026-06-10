@@ -1,0 +1,5 @@
+flask>=3.0.0
+requests>=2.31.0
+opentelemetry-distro[otlp]>=0.46b0
+opentelemetry-instrumentation-flask>=0.46b0
+opentelemetry-instrumentation-requests>=0.46b0
