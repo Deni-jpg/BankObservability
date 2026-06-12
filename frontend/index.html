@@ -696,8 +696,8 @@ async function executar(canal) {
   return realizarTransacao(body, canal, valor);
 }
 
-async function realizarTransacao(body, canal, valor) {
-  if (valor > saldo) {
+async function realizarTransacao(body, canal, valor, manual = true) {
+  if (manual && valor > saldo) {
     const disp = saldo.toLocaleString("pt-PT", { minimumFractionDigits: 2 });
     setLog(`❌ Saldo insuficiente — Disponível: €${disp} | Necessário: €${valor.toFixed(2)}`);
     showError(`Saldo insuficiente. Disponível: €${disp} | Necessário: €${valor.toFixed(2)}`);
@@ -728,6 +728,7 @@ async function realizarTransacao(body, canal, valor) {
     });
 
     if (data.status === "success") {
+      if (manual) { saldo -= valor; atualizarSaldo(); }
       setLog(`✅ ${canal.toUpperCase()} €${valor.toFixed(2)} | ${data.latencia_ms}ms`);
       showSuccess(`${canal.toUpperCase()} €${valor.toFixed(2)} processado com sucesso`);
     } else if (data.status === "blocked") {
@@ -794,7 +795,7 @@ async function simularFraudeManual() {
     valor_eur:    valor,
     iban_origem:  ibanOrigem,
     force_fraud:  true,
-  }, "fraude_simulada", valor);
+  }, "fraude_simulada", valor, false);
 }
 
 // ─── Registo de resultado no histórico ───────────────────────────────────────
@@ -803,8 +804,6 @@ function registarResultado(tx) {
   if (tx.status === "error" || tx.status === "blocked") totalErros++;
   if (tx.status === "success" && tx.valor) {
     totalValor += tx.valor;
-    saldo -= tx.valor;
-    atualizarSaldo();
   }
 
   document.getElementById("cnt-enviados").textContent = totalEnviados;
@@ -896,7 +895,7 @@ function startAuto() {
     if (roll < 0.70) {
       const c = escolherCanal();
       const v = Math.round((Math.random() * (c.maxVal - c.minVal) + c.minVal) * 100) / 100;
-      await realizarTransacao({ canal: c.canal, valor_eur: v, iban_origem: ibanOrigem }, c.canal, v);
+      await realizarTransacao({ canal: c.canal, valor_eur: v, iban_origem: ibanOrigem }, c.canal, v, false);
     } else if (roll < 0.90) {
       await simularLogin();
     } else {

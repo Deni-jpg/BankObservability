@@ -54,16 +54,6 @@
         "singleValue": { "label": "€ Bloqueado", "recordField": "bloqueado" }
       }
     },
-    "6": {
-      "query": "fetch spans, from:now()-15m\n| filter isNotNull(`service.name`)\n| summarize total = count(), p99_ms = round(percentile(duration, 99) / 1000000, decimals: 1), by:{servico = `service.name`}\n| sort p99_ms, direction:\"descending\"\n| limit 1\n| fields p99_ms",
-      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
-      "title": "⚡ P99 mais alto (OTel spans) — 15min",
-      "type": "data",
-      "visualization": "singleValue",
-      "visualizationSettings": {
-        "singleValue": { "label": "P99 ms", "recordField": "p99_ms" }
-      }
-    },
     "7": {
       "content": "### 🔐 Detecção de Ameaças de Autenticação",
       "type": "markdown"
@@ -203,7 +193,6 @@
     "3":  { "h": 4, "w": 4,  "x": 8,  "y": 2  },
     "4":  { "h": 4, "w": 4,  "x": 12, "y": 2  },
     "5":  { "h": 4, "w": 4,  "x": 16, "y": 2  },
-    "6":  { "h": 4, "w": 4,  "x": 20, "y": 2  },
     "7":  { "h": 1, "w": 24, "x": 0,  "y": 6  },
     "8":  { "h": 7, "w": 10, "x": 0,  "y": 7  },
     "9":  { "h": 7, "w": 14, "x": 10, "y": 7  },
