@@ -1,121 +1,67 @@
 {
   "tiles": {
     "0": {
-      "content": "## 🇵🇹 Banco PT — Observabilidade Executiva\nMétricas técnicas cruzadas com impacto financeiro real. Dashboard em tempo real.\n**Canais:** MB WAY · Multibanco · Cartões · SEPA · App Mobile · Homebanking",
+      "content": "## 🇵🇹 Banco PT — Observabilidade Executiva\nMétricas técnicas cruzadas com impacto financeiro real. Dashboard em tempo real.\n**Canais:** MB WAY · Multibanco · Cartão Débito/Crédito · SEPA · App Mobile",
       "type": "markdown"
     },
     "1": {
       "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| summarize receita = sum(toDouble(valor_eur))",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "💼 Receita processada (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Receita 24h €",
-          "recordField": "receita"
-        }
+        "singleValue": { "label": "Receita 24h €", "recordField": "receita" }
       }
     },
     "2": {
       "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(valor_eur)\n| summarize perda = sum(toDouble(valor_eur))",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "⚠️ Receita PERDIDA em erros (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Perda 24h €",
-          "recordField": "perda"
-        }
+        "singleValue": { "label": "Perda 24h €", "recordField": "perda" }
       }
     },
     "3": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(iban_origem)\n| summarize afetados = countDistinctExact(iban_origem)",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "👥 Clientes afetados (24h)",
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(iban_origem)\n| summarize afetados = countDistinct(iban_origem)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "👥 Clientes afetados por erros (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Clientes afetados",
-          "recordField": "afetados"
-        }
+        "singleValue": { "label": "Clientes afetados", "recordField": "afetados" }
       }
     },
     "4": {
       "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| summarize ticket = round(avg(toDouble(valor_eur)), decimals: 2)",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "💳 Ticket médio (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Ticket médio €",
-          "recordField": "ticket"
-        }
+        "singleValue": { "label": "Ticket médio €", "recordField": "ticket" }
       }
     },
     "5": {
       "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count()",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "📊 Volume (24h)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "📊 Volume total (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Transações 24h",
-          "recordField": "total"
-        }
+        "singleValue": { "label": "Transações 24h", "recordField": "total" }
       }
     },
     "6": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\")\n| fieldsAdd sucesso = round(toDouble(ok)/toDouble(total)*100, decimals: 2)\n| fields sucesso",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\")\n| fieldsAdd sucesso = round(toDouble(ok) / toDouble(total) * 100, decimals: 2)\n| fields sucesso",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "🎯 Taxa de sucesso (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "% Sucesso",
-          "recordField": "sucesso"
-        }
+        "singleValue": { "label": "% Sucesso", "recordField": "sucesso" }
       }
     },
     "7": {
@@ -124,59 +70,31 @@
     },
     "8": {
       "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(valor_eur)\n| summarize perda_eur = sum(toDouble(valor_eur)), by:{bin(timestamp, 5m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Receita perdida ao longo do tempo (€) — 6h",
       "type": "data",
       "visualization": "areaChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "9": {
       "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| filter isNotNull(valor_eur)\n| summarize ocorrencias = count(), impacto_eur = round(sum(toDouble(valor_eur)), decimals: 2), ticket_medio = round(avg(toDouble(valor_eur)), decimals: 2), by:{codigo_erro = error_code}\n| sort impacto_eur, direction:\"descending\"\n| limit 10",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Top erros por IMPACTO FINANCEIRO (€) — 24h",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "10": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| summarize receita_eur = round(sum(toDouble(valor_eur)), decimals: 2), volume = count(), by:{canal}\n| sort receita_eur, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| summarize receita_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{canal}\n| sort receita_eur, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Receita por canal (24h) — €",
       "type": "data",
-      "visualization": "barChart",
+      "visualization": "table",
       "visualizationSettings": {}
     },
     "11": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), sucesso = countIf(status == \"success\"), erros = countIf(status == \"error\"), perda_eur = if(isNull(sum(if(status == \"error\", toDouble(valor_eur), null))), 0, sum(if(status == \"error\", toDouble(valor_eur), null))), by:{canal}\n| fieldsAdd taxa_erro_pct = round(toDouble(erros)/toDouble(total)*100, decimals: 2)\n| sort perda_eur, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(valor_eur)\n| fieldsAdd valor_erro = if(status == \"error\", then: toDouble(valor_eur), else: toDouble(0))\n| summarize total = count(), sucesso = countIf(status == \"success\"), erros = countIf(status == \"error\"), perda_eur = round(sum(valor_erro), decimals: 2), by:{canal}\n| sort perda_eur, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Volume × Perda por canal (24h)",
       "type": "data",
       "visualization": "table",
@@ -188,49 +106,23 @@
     },
     "13": {
       "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize sucesso = countIf(status == \"success\"), erro = countIf(status == \"error\"), by:{bin(timestamp, 1m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Transações/min: sucesso vs erro (1h)",
       "type": "data",
       "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "14": {
       "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{bin(timestamp, 1m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Latência P50 / P95 / P99 — todos os canais (1h)",
       "type": "data",
       "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "15": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\"), erros = countIf(status == \"error\"), by:{canal}\n| fieldsAdd sla_pct = round(toDouble(ok)/toDouble(total)*100, decimals: 3)\n| fields canal, total, erros, sla_pct\n| sort sla_pct",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\"), erros = countIf(status == \"error\"), by:{canal}\n| fieldsAdd sla_pct = round(toDouble(ok) / toDouble(total) * 100, decimals: 3)\n| sort sla_pct",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "SLA por canal (24h)",
       "type": "data",
       "visualization": "table",
@@ -238,30 +130,18 @@
     },
     "16": {
       "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{canal}\n| sort p95, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Latência por canal (1h) — ms",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "17": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| filter isNotNull(perfil_cliente)\n| summarize receita_eur = round(sum(toDouble(valor_eur)), decimals: 2), transacoes = count(), by:{perfil_cliente}\n| sort receita_eur, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"success\"\n| filter isNotNull(valor_eur)\n| filter isNotNull(perfil_cliente)\n| summarize receita_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{perfil_cliente}\n| sort receita_eur, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Receita por perfil de cliente (24h)",
       "type": "data",
-      "visualization": "barChart",
+      "visualization": "table",
       "visualizationSettings": {}
     },
     "18": {
@@ -269,120 +149,64 @@
       "type": "markdown"
     },
     "19": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.fraude\"\n| filter status == \"blocked\"\n| filter isNotNull(valor_tentado_eur)\n| summarize valor_bloqueado = sum(toDouble(valor_tentado_eur))",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"blocked\"\n| filter isNotNull(valor_eur)\n| summarize valor_bloqueado = round(sum(toDouble(valor_eur)), decimals: 2)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "💸 Valor bloqueado em fraude (24h) — €",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Valor bloqueado €",
-          "recordField": "valor_bloqueado"
-        }
+        "singleValue": { "label": "Valor bloqueado €", "recordField": "valor_bloqueado" }
       }
     },
     "20": {
-      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.fraude\"\n| summarize total = count(), bloqueadas = countIf(status == \"blocked\")\n| fieldsAdd eficiencia = round(toDouble(bloqueadas)/toDouble(total)*100, decimals: 1)\n| fields eficiencia",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.fraude\"\n| summarize total = count(), bloqueadas = countIf(status == \"blocked\")\n| fieldsAdd eficiencia = round(toDouble(bloqueadas) / toDouble(total) * 100, decimals: 1)\n| fields eficiencia",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "🎯 Eficiência anti-fraude (24h)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "% Bloqueadas",
-          "recordField": "eficiencia"
-        }
+        "singleValue": { "label": "% Bloqueadas", "recordField": "eficiencia" }
       }
     },
     "21": {
       "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.fraude\"\n| summarize tentativas = count(), bloqueadas = countIf(status == \"blocked\"), by:{bin(timestamp, 15m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Tentativas de fraude (6h) — total vs bloqueadas",
       "type": "data",
       "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "22": {
-      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.auth\"\n| filter pais_origem != \"PT\"\n| filter isNotNull(pais_origem)\n| summarize tentativas = count(), sucesso = countIf(status == \"success\"), falhas = countIf(status == \"failed\"), by:{pais = pais_origem}\n| sort tentativas, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.auth\"\n| filter pais_origem != \"PT\"\n| filter isNotNull(pais_origem)\n| summarize tentativas = count(), sucesso = countIf(status == \"success\"), falhas = countIf(status == \"failure\"), by:{pais = pais_origem}\n| sort tentativas, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Acessos a partir do estrangeiro (6h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "23": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failed\"\n| summarize falhas = count(), by:{bin(timestamp, 5m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| summarize falhas = count(), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Falhas de autenticação (1h)",
       "type": "data",
       "visualization": "areaChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "24": {
-      "content": "### 🔍 Investigação de erros",
+      "content": "### 🔍 Investigação de Erros",
       "type": "markdown"
     },
     "25": {
-      "query": "fetch bizevents, from:now()-30m\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| fields timestamp, canal, servico, error_code, valor_eur, latencia_ms, iban = iban_origem\n| sort timestamp, direction:\"descending\"\n| limit 20",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Últimas 20 transações com erro (30min)",
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| fields timestamp, canal, error_code, valor_eur, latencia_ms, iban = iban_origem\n| sort timestamp, direction:\"descending\"\n| limit 20",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Últimas 20 transações com erro (6h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "26": {
       "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), impacto_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{canal, codigo = error_code}\n| sort ocorrencias, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
       "title": "Distribuição de erros: canal × código (1h)",
       "type": "data",
       "visualization": "table",
@@ -393,19 +217,19 @@
   "annotations": [],
   "settings": {},
   "layouts": {
-    "0": { "h": 2, "w": 24, "x": 0, "y": 0 },
-    "1": { "h": 4, "w": 4, "x": 0,  "y": 2 },
-    "2": { "h": 4, "w": 4, "x": 4,  "y": 2 },
-    "3": { "h": 4, "w": 4, "x": 8,  "y": 2 },
-    "4": { "h": 4, "w": 4, "x": 12, "y": 2 },
-    "5": { "h": 4, "w": 4, "x": 16, "y": 2 },
-    "6": { "h": 4, "w": 4, "x": 20, "y": 2 },
-    "7": { "h": 1, "w": 24, "x": 0, "y": 6 },
-    "8": { "h": 6, "w": 12, "x": 0,  "y": 7 },
-    "9": { "h": 6, "w": 12, "x": 12, "y": 7 },
+    "0":  { "h": 2, "w": 24, "x": 0,  "y": 0  },
+    "1":  { "h": 4, "w": 4,  "x": 0,  "y": 2  },
+    "2":  { "h": 4, "w": 4,  "x": 4,  "y": 2  },
+    "3":  { "h": 4, "w": 4,  "x": 8,  "y": 2  },
+    "4":  { "h": 4, "w": 4,  "x": 12, "y": 2  },
+    "5":  { "h": 4, "w": 4,  "x": 16, "y": 2  },
+    "6":  { "h": 4, "w": 4,  "x": 20, "y": 2  },
+    "7":  { "h": 1, "w": 24, "x": 0,  "y": 6  },
+    "8":  { "h": 6, "w": 12, "x": 0,  "y": 7  },
+    "9":  { "h": 6, "w": 12, "x": 12, "y": 7  },
     "10": { "h": 6, "w": 12, "x": 0,  "y": 13 },
     "11": { "h": 6, "w": 12, "x": 12, "y": 13 },
-    "12": { "h": 1, "w": 24, "x": 0, "y": 19 },
+    "12": { "h": 1, "w": 24, "x": 0,  "y": 19 },
     "13": { "h": 6, "w": 12, "x": 0,  "y": 20 },
     "14": { "h": 6, "w": 12, "x": 12, "y": 20 },
     "15": { "h": 6, "w": 12, "x": 0,  "y": 26 },

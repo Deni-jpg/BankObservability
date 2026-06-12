@@ -339,6 +339,10 @@
              data-dtrum-input-type="sensitive" autocomplete="current-password">
     </div>
     <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <button class="login-btn" style="background:#1b7a3e;font-size:.8rem;padding:9px" onclick="fazerLogin('success')">✅ Forçar Sucesso</button>
+      <button class="login-btn" style="background:#c0392b;font-size:.8rem;padding:9px" onclick="fazerLogin('fail')">❌ Forçar Falha</button>
+    </div>
     <div class="login-error" id="login-error">Credenciais inválidas. Tente novamente.</div>
   </div>
 </div>
@@ -366,6 +370,9 @@
     <div class="card" style="margin-bottom:16px">
       <h2>Conta à Ordem</h2>
       <div class="balance" id="saldo-display">€ 12.435,80</div>
+      <div style="text-align:center;margin:-4px 0 6px">
+        <button onclick="recarregarSaldo()" style="background:none;border:1px solid var(--borda);color:#888;font-size:.72rem;padding:3px 10px;border-radius:5px;cursor:pointer">↺ Recarregar saldo</button>
+      </div>
       <div class="iban-display" id="iban-display">Carregando IBAN...</div>
 
       <div class="btn-grid">
@@ -567,6 +574,19 @@ let totalValor    = 0;
 let historico     = [];
 let autoInterval  = null;
 let ibanOrigem    = gerarIBAN();
+let saldo         = 12435.80;
+
+// ─── Saldo ────────────────────────────────────────────────────────────────────
+function atualizarSaldo() {
+  const el = document.getElementById("saldo-display");
+  el.textContent = "€ " + saldo.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  el.style.color = saldo <= 0 ? "var(--vermelho)" : saldo < 200 ? "var(--laranja)" : "var(--verde)";
+}
+function recarregarSaldo() {
+  saldo = 12435.80;
+  atualizarSaldo();
+  setLog("💳 Saldo recarregado — €12.435,80");
+}
 
 // ─── RUM helpers — são no-ops seguros se o agente não estiver carregado ──────
 function rumIdentify(userId) {
@@ -583,15 +603,18 @@ function rumError(name, msg) {
 }
 
 // ─── Login ───────────────────────────────────────────────────────────────────
-async function fazerLogin() {
+async function fazerLogin(forceMode = null) {
   const user = document.getElementById("login-user").value.trim() || "joao.silva";
   const pin  = document.getElementById("login-pin").value;
   const actionId = rumEnterAction("Login Bancário");
   try {
+    const body = { metodo: "PIN", user_id: user };
+    if (forceMode === "success") body.force_success = true;
+    if (forceMode === "fail")    body.force_fail    = true;
     const res  = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ metodo: "PIN", user_id: user }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (data.status === "success") {
@@ -629,6 +652,7 @@ document.addEventListener("keydown", e => {
       document.getElementById("gw-status").textContent = s;
       document.getElementById("gw-status").style.color = s === "conectado" ? "#81ecec" : "#ff7675";
     });
+  atualizarSaldo();
 })();
 
 // ─── Navegação de abas ────────────────────────────────────────────────────────
@@ -673,6 +697,15 @@ async function executar(canal) {
 }
 
 async function realizarTransacao(body, canal, valor) {
+  if (valor > saldo) {
+    const disp = saldo.toLocaleString("pt-PT", { minimumFractionDigits: 2 });
+    setLog(`❌ Saldo insuficiente — Disponível: €${disp} | Necessário: €${valor.toFixed(2)}`);
+    showError(`Saldo insuficiente. Disponível: €${disp} | Necessário: €${valor.toFixed(2)}`);
+    rumError("Saldo Insuficiente", `Disponível: €${disp} | Necessário: €${valor.toFixed(2)}`);
+    registarResultado({ hora: new Date(), canal, valor, status: "error", error_code: "INSUFFICIENT_FUNDS" });
+    return;
+  }
+
   setLog(`⏳ Processando ${canal.toUpperCase()} de €${valor.toFixed(2)}…`);
   const actionId = rumEnterAction(`Transação ${canal}`);
 
@@ -754,20 +787,25 @@ async function simularLogin() {
 
 // ─── Verificação de fraude manual ────────────────────────────────────────────
 async function simularFraudeManual() {
-  setLog("⏳ Simulando transação suspeita…");
-  const valor = Math.round(Math.random() * 9000 + 1000) / 10;
+  setLog("⏳ Simulando transação suspeita para análise de fraude…");
+  const valor = Math.round(Math.random() * 5000 + 10000) / 10;
   await realizarTransacao({
-    canal:       "mbway",
-    valor_eur:   valor,
-    iban_origem: ibanOrigem,
-  }, "mbway", valor);
+    canal:        "transferencia_sepa",
+    valor_eur:    valor,
+    iban_origem:  ibanOrigem,
+    force_fraud:  true,
+  }, "fraude_simulada", valor);
 }
 
 // ─── Registo de resultado no histórico ───────────────────────────────────────
 function registarResultado(tx) {
   totalEnviados++;
   if (tx.status === "error" || tx.status === "blocked") totalErros++;
-  if (tx.status === "success" && tx.valor) totalValor += tx.valor;
+  if (tx.status === "success" && tx.valor) {
+    totalValor += tx.valor;
+    saldo -= tx.valor;
+    atualizarSaldo();
+  }
 
   document.getElementById("cnt-enviados").textContent = totalEnviados;
   document.getElementById("cnt-erros").textContent    = totalErros;

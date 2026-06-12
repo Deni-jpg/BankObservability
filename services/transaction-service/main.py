@@ -119,11 +119,13 @@ def process():
     latencia_ms    = random.randint(min_ms, max_ms)
     time.sleep(latencia_ms / 1000)
 
+    force_fraud = body.get("force_fraud", False)
     fraud_result = {"status": "allowed", "score": 0, "rules_triggered": []}
     try:
         r = http.post(f"{FRAUD_URL}/check", json={
             "transaction_id": tx_id, "canal": canal,
             "valor_eur": valor, "iban_destino": iban_destino, "perfil_cliente": perfil,
+            "force_fraud": force_fraud,
         }, timeout=8)
         fraud_result = r.json()
     except Exception as e:

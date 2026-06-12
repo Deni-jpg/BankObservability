@@ -1,121 +1,67 @@
 {
   "tiles": {
     "0": {
-      "content": "## 🛠️ Banco PT — Dashboard Técnico / SRE\nSaúde da plataforma, análise de erros e drill-down para investigação.\n**Atualização contínua** · timeframe global aplica a tiles sem janela fixa.",
+      "content": "## 🔧 Banco PT — Dashboard Técnico\nMétricas de engenharia: latência, throughput, erros por serviço e análise forense.\n**Serviços:** api-gateway · auth-service · transaction-service · fraud-service",
       "type": "markdown"
     },
     "1": {
-      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\")\n| fieldsAdd health = round(toDouble(ok)/toDouble(total)*100, decimals: 2)\n| fields health",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "🟢 Health Score (5min)",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| summarize total = count()",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "📊 Transações (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Health %",
-          "recordField": "health"
-        }
+        "singleValue": { "label": "Txn 5min", "recordField": "total" }
       }
     },
     "2": {
-      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p95 = percentile(toLong(latencia_ms), 95)",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "⚡ Latência P95 agora (5min)",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\")\n| fieldsAdd taxa = round(toDouble(ok) / toDouble(total) * 100, decimals: 1)\n| fields taxa",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "✅ Taxa de Sucesso (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "P95 ms",
-          "recordField": "p95"
-        }
+        "singleValue": { "label": "% Sucesso", "recordField": "taxa" }
       }
     },
     "3": {
-      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| summarize erros = count()",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "🔴 Erros nos últimos 5 min",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p95 = percentile(toLong(latencia_ms), 95)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "⏱️ Latência P95 (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Erros 5min",
-          "recordField": "erros"
-        }
+        "singleValue": { "label": "P95 ms", "recordField": "p95" }
       }
     },
     "4": {
-      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| summarize total = count()\n| fieldsAdd tpm = total / 5\n| fields tpm",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "📊 Volume agora (txn/min)",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| summarize falhas = count()",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🔒 Auth Failures (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Txn/min",
-          "recordField": "tpm"
-        }
+        "singleValue": { "label": "Falhas auth", "recordField": "falhas" }
       }
     },
     "5": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\"), by:{canal}\n| fieldsAdd sla = toDouble(ok)/toDouble(total)*100\n| filter sla < 99.9\n| summarize canais_degradados = count()",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "❗ Canais com SLA degradado (1h)",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.fraude\"\n| filter status == \"blocked\"\n| summarize bloqueadas = count()",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🛡️ Fraudes Bloqueadas (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Canais degradados",
-          "recordField": "canais_degradados"
-        }
+        "singleValue": { "label": "Bloqueadas", "recordField": "bloqueadas" }
       }
     },
     "6": {
-      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| filter toLong(latencia_ms) > 2000\n| summarize outliers = count()",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "🐌 Outliers de latência (>2s, 5min)",
+      "query": "fetch bizevents, from:now()-5m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize lentas = countIf(toLong(latencia_ms) > 1000)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🐢 Txn >1000ms (5min)",
       "type": "data",
       "visualization": "singleValue",
       "visualizationSettings": {
-        "singleValue": {
-          "label": "Outliers",
-          "recordField": "outliers"
-        }
+        "singleValue": { "label": "Lentas >1s", "recordField": "lentas" }
       }
     },
     "7": {
@@ -123,282 +69,140 @@
       "type": "markdown"
     },
     "8": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize volume = count(), ok = countIf(status == \"success\"), erros = countIf(status == \"error\"), p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{canal}\n| fieldsAdd sucesso_pct = round(toDouble(ok)/toDouble(volume)*100, decimals: 2)\n| fields canal, volume, sucesso_pct, erros, p50, p95, p99\n| sort sucesso_pct",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Status detalhado por canal (1h)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), by:{bin(timestamp, 2m), canal}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Volume por canal ao longo do tempo (1h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "9": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{canal}\n| sort p95, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Latência por canal (1h) — ms",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
-    "9": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), ok = countIf(status == \"success\"), by:{canal, bin(timestamp, 2m)}\n| fieldsAdd sla = round(toDouble(ok)/toDouble(total)*100, decimals: 2)\n| fields timestamp, canal, sla",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Taxa de sucesso por canal — 1h",
-      "type": "data",
-      "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
-    },
     "10": {
-      "content": "### 🚨 Análise de Erros",
-      "type": "markdown"
-    },
-    "11": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| summarize erros = count(), by:{bin(timestamp, 1m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Erros por minuto (1h)",
-      "type": "data",
-      "visualization": "areaChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
-    },
-    "12": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), by:{codigo = error_code}\n| sort ocorrencias, direction:\"descending\"\n| limit 10",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Top códigos de erro (1h)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| summarize total = count(), erros = countIf(status == \"error\"), by:{canal}\n| fieldsAdd taxa_erro_pct = round(toDouble(erros) / toDouble(total) * 100, decimals: 2)\n| sort taxa_erro_pct, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Taxa de erro por canal (1h) — %",
       "type": "data",
       "visualization": "barChart",
       "visualizationSettings": {}
     },
+    "11": {
+      "content": "### 🚨 Análise de Erros",
+      "type": "markdown"
+    },
+    "12": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), by:{bin(timestamp, 5m), error_code}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Erros por tipo ao longo do tempo (1h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
     "13": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), p95_latencia = percentile(toLong(latencia_ms), 95), valor_perdido_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{canal, codigo = error_code}\n| sort ocorrencias, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Distribuição canal × código de erro (1h)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), valor_perdido = round(sum(toDouble(valor_eur)), decimals: 2), by:{canal, error_code}\n| sort ocorrencias, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Distribuição de erros: canal × código (1h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "14": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), by:{codigo = error_code, bin(timestamp, 2m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Códigos de erro ao longo do tempo (1h)",
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize total = count(), by:{error_code}\n| sort total, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Frequência de erros por código (24h)",
       "type": "data",
-      "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualization": "table",
+      "visualizationSettings": {}
     },
     "15": {
-      "content": "### ⏱️ Performance e Latência",
+      "content": "### ⏱️ Performance & Latência",
       "type": "markdown"
     },
     "16": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{bin(timestamp, 1m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Latência P50 / P95 / P99 global (1h)",
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Latência percentis ao longo do tempo (6h)",
       "type": "data",
-      "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualization": "areaChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "17": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p95 = percentile(toLong(latencia_ms), 95), by:{canal, bin(timestamp, 2m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "P95 por canal ao longo do tempo (1h)",
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), lentas = countIf(toLong(latencia_ms) > 1000), by:{canal}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Latência por canal: P50/P95/P99 (6h)",
       "type": "data",
-      "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualization": "table",
+      "visualizationSettings": {}
     },
     "18": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize p50 = percentile(toLong(latencia_ms), 50), p75 = percentile(toLong(latencia_ms), 75), p90 = percentile(toLong(latencia_ms), 90), p95 = percentile(toLong(latencia_ms), 95), p99 = percentile(toLong(latencia_ms), 99), max_ms = max(toLong(latencia_ms)), by:{canal}\n| sort p99, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Distribuição de latência por canal (1h)",
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize lentas = countIf(toLong(latencia_ms) > 1000), rapidas = countIf(toLong(latencia_ms) <= 1000), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Transações lentas (>1000ms) vs rápidas (6h)",
       "type": "data",
-      "visualization": "table",
-      "visualizationSettings": {}
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "19": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| filter isNotNull(servico)\n| summarize p95 = percentile(toLong(latencia_ms), 95), volume = count(), by:{servico, canal}\n| filter volume > 5\n| sort p95, direction:\"descending\"\n| limit 15",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Serviços mais lentos (P95, 1h)",
+      "content": "### 🔍 Drill-Down Investigação",
+      "type": "markdown"
+    },
+    "20": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| fields timestamp, txn = transaction_id, canal, error_code, valor_eur, latencia_ms, iban = iban_origem\n| sort timestamp, direction:\"descending\"\n| limit 25",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Últimas 25 transações com erro (6h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
-    "20": {
-      "content": "### 🔍 Investigação (Drill-Down)",
-      "type": "markdown"
-    },
     "21": {
-      "query": "fetch bizevents, from:now()-30m\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| fields timestamp, canal, servico, error_code, error_message, latencia_ms, valor_eur, iban = iban_origem, transaction_id\n| sort timestamp, direction:\"descending\"\n| limit 30",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Últimas 30 transações com erro",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(fraud_score)\n| summarize score_medio = round(avg(toDouble(fraud_score)), decimals: 2), score_max = max(toDouble(fraud_score)), altas = countIf(toDouble(fraud_score) > 0.7), by:{canal}\n| sort score_max, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Fraud score: por canal nas transações (1h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "22": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(servico)\n| summarize ocorrencias = count(), canais_afetados = countDistinctExact(canal), perda_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{servico}\n| sort ocorrencias, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Erros por serviço — 1h",
-      "type": "data",
-      "visualization": "table",
-      "visualizationSettings": {}
+      "content": "### 🔐 Auth & Fraude — Sinais Externos",
+      "type": "markdown"
     },
     "23": {
-      "query": "fetch bizevents, from:now()-30m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| fields timestamp, canal, servico, latencia_ms, status, valor_eur, transaction_id\n| sort toLong(latencia_ms), direction:\"descending\"\n| limit 20",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Transações mais lentas (top 20, 30min)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| summarize total = count(), sucesso = countIf(status == \"success\"), falhas = countIf(status == \"failure\"), by:{bin(timestamp, 2m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Auth: sucesso vs falha ao longo do tempo (1h)",
       "type": "data",
-      "visualization": "table",
-      "visualizationSettings": {}
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
     },
     "24": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(iban_origem)\n| summarize erros_no_cliente = count(), canais_afetados = countDistinctExact(canal), valor_perdido_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{iban_origem}\n| sort erros_no_cliente, direction:\"descending\"\n| limit 10",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Clientes (IBAN) mais afetados por erros (1h)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter isNotNull(metodo_autenticacao)\n| summarize total = count(), sucesso = countIf(status == \"success\"), falhas = countIf(status == \"failure\"), by:{metodo = metodo_autenticacao}\n| sort total, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Auth por método de autenticação (1h)",
       "type": "data",
       "visualization": "table",
       "visualizationSettings": {}
     },
     "25": {
-      "content": "### 📡 Sinais Externos (Auth & Fraude)",
-      "type": "markdown"
-    },
-    "26": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failed\"\n| filter isNotNull(pais_origem)\n| summarize falhas = count(), ips_distintos = countDistinctExact(ip_origem), by:{pais = pais_origem}\n| sort falhas, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Falhas de login + país de origem (1h)",
-      "type": "data",
-      "visualization": "table",
-      "visualizationSettings": {}
-    },
-    "27": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.fraude\"\n| summarize tentativas = count(), bloqueadas = countIf(status == \"blocked\"), valor_bloqueado_eur = round(sum(if(status == \"blocked\", toDouble(valor_tentado_eur), 0)), decimals: 2), by:{canal, regra}\n| sort tentativas, direction:\"descending\"",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Fraude por canal e regra (1h)",
-      "type": "data",
-      "visualization": "table",
-      "visualizationSettings": {}
-    },
-    "28": {
-      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` in [\"banco.core\", \"banco.fraude\", \"banco.auth\"]\n| filter status == \"error\" or status == \"failed\" or status == \"blocked\"\n| summarize ocorrencias = count(), by:{provider = `event.provider`, status, bin(timestamp, 2m)}",
-      "querySettings": {
-        "defaultSamplingRatio": 10,
-        "defaultScanLimitGbytes": 500,
-        "enableSampling": false,
-        "maxResultMegaBytes": 100,
-        "maxResultRecords": 1000
-      },
-      "title": "Eventos críticos correlacionados — 1h (todos os providers)",
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.fraude\"\n| filter isNotNull(score)\n| summarize p50 = percentile(toDouble(score), 50), p90 = percentile(toDouble(score), 90), p99 = percentile(toDouble(score), 99), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Distribuição de fraud score ao longo do tempo (1h)",
       "type": "data",
       "visualization": "lineChart",
-      "visualizationSettings": {
-        "chartSettings": {
-          "gapPolicy": "connect"
-        }
-      }
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "26": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.fraude\"\n| filter isNotNull(regras_ativas)\n| filter regras_ativas != \"none\"\n| summarize eventos = count(), bloqueadas = countIf(status == \"blocked\"), valor_eur = round(sum(toDouble(valor_eur)), decimals: 2), by:{regras = regras_ativas}\n| sort eventos, direction:\"descending\"\n| limit 10",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Fraudes bloqueadas por combinação de regras (1h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
     }
   },
   "variables": [],
@@ -413,27 +217,27 @@
     "5":  { "h": 4, "w": 4,  "x": 16, "y": 2  },
     "6":  { "h": 4, "w": 4,  "x": 20, "y": 2  },
     "7":  { "h": 1, "w": 24, "x": 0,  "y": 6  },
-    "8":  { "h": 6, "w": 14, "x": 0,  "y": 7  },
-    "9":  { "h": 6, "w": 10, "x": 14, "y": 7  },
-    "10": { "h": 1, "w": 24, "x": 0,  "y": 13 },
-    "11": { "h": 5, "w": 12, "x": 0,  "y": 14 },
-    "12": { "h": 5, "w": 12, "x": 12, "y": 14 },
-    "13": { "h": 6, "w": 12, "x": 0,  "y": 19 },
-    "14": { "h": 6, "w": 12, "x": 12, "y": 19 },
-    "15": { "h": 1, "w": 24, "x": 0,  "y": 25 },
-    "16": { "h": 5, "w": 12, "x": 0,  "y": 26 },
-    "17": { "h": 5, "w": 12, "x": 12, "y": 26 },
-    "18": { "h": 6, "w": 12, "x": 0,  "y": 31 },
-    "19": { "h": 6, "w": 12, "x": 12, "y": 31 },
-    "20": { "h": 1, "w": 24, "x": 0,  "y": 37 },
-    "21": { "h": 7, "w": 24, "x": 0,  "y": 38 },
-    "22": { "h": 6, "w": 8,  "x": 0,  "y": 45 },
-    "23": { "h": 6, "w": 8,  "x": 8,  "y": 45 },
-    "24": { "h": 6, "w": 8,  "x": 16, "y": 45 },
-    "25": { "h": 1, "w": 24, "x": 0,  "y": 51 },
-    "26": { "h": 5, "w": 8,  "x": 0,  "y": 52 },
-    "27": { "h": 5, "w": 8,  "x": 8,  "y": 52 },
-    "28": { "h": 5, "w": 8,  "x": 16, "y": 52 }
+    "8":  { "h": 6, "w": 16, "x": 0,  "y": 7  },
+    "9":  { "h": 6, "w": 8,  "x": 16, "y": 7  },
+    "10": { "h": 5, "w": 24, "x": 0,  "y": 13 },
+    "11": { "h": 1, "w": 24, "x": 0,  "y": 18 },
+    "12": { "h": 6, "w": 12, "x": 0,  "y": 19 },
+    "13": { "h": 6, "w": 12, "x": 12, "y": 19 },
+    "14": { "h": 5, "w": 24, "x": 0,  "y": 25 },
+    "15": { "h": 1, "w": 24, "x": 0,  "y": 30 },
+    "16": { "h": 6, "w": 12, "x": 0,  "y": 31 },
+    "17": { "h": 6, "w": 12, "x": 12, "y": 31 },
+    "18": { "h": 6, "w": 24, "x": 0,  "y": 37 },
+    "19": { "h": 1, "w": 24, "x": 0,  "y": 43 },
+    "20": { "h": 8, "w": 14, "x": 0,  "y": 44 },
+    "21": { "h": 8, "w": 10, "x": 14, "y": 44 },
+    "22": { "h": 1, "w": 24, "x": 0,  "y": 52 },
+    "23": { "h": 6, "w": 12, "x": 0,  "y": 53 },
+    "24": { "h": 6, "w": 12, "x": 12, "y": 53 },
+    "25": { "h": 6, "w": 12, "x": 0,  "y": 59 },
+    "26": { "h": 6, "w": 12, "x": 12, "y": 59 },
+    "27": { "h": 6, "w": 12, "x": 0,  "y": 65 },
+    "28": { "h": 6, "w": 12, "x": 12, "y": 65 }
   },
   "version": 21
 }

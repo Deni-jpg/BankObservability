@@ -81,22 +81,26 @@ def check():
     valor  = float(body.get("valor_eur", 0))
     perfil = body.get("perfil_cliente", "normal")
 
+    force_fraud = body.get("force_fraud", False)
     score, triggered = 0, []
 
-    if valor > 5000:
-        score += 30
-        triggered.append("value_anomaly")
-    elif valor > 2000:
-        score += 15
+    if force_fraud:
+        triggered = ["velocity_check", "value_anomaly", "beneficiary_watchlist"]
+        score = 80
+    else:
+        if valor > 5000:
+            score += 30
+            triggered.append("value_anomaly")
+        elif valor > 2000:
+            score += 15
+
+        for rule, cfg in RULES.items():
+            if rule not in triggered and random.random() < cfg["prob"]:
+                score += cfg["weight"]
+                triggered.append(rule)
 
     threshold = BLOCK_THRESHOLD + (20 if perfil == "enterprise" else 0)
-
-    for rule, cfg in RULES.items():
-        if rule not in triggered and random.random() < cfg["prob"]:
-            score += cfg["weight"]
-            triggered.append(rule)
-
-    is_blocked = score >= threshold
+    is_blocked = force_fraud or score >= threshold
     status     = "blocked" if is_blocked else "allowed"
 
     span      = trace.get_current_span()

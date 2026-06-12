@@ -1,0 +1,227 @@
+{
+  "tiles": {
+    "0": {
+      "content": "## 🛡️ Banco PT — Segurança & Resiliência\nDash enterprise: brute force, transações paradas, erros de infraestrutura e análise avançada de fraude.",
+      "type": "markdown"
+    },
+    "1": {
+      "query": "fetch bizevents, from:now()-15m\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| summarize falhas = count()",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🚨 Falhas auth (15min)",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "Falhas login", "recordField": "falhas" }
+      }
+    },
+    "2": {
+      "query": "fetch bizevents, from:now()-15m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize paradas = countIf(toLong(latencia_ms) > 1000)",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🐢 Txn paradas >1000ms (15min)",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "Txn lentas", "recordField": "paradas" }
+      }
+    },
+    "3": {
+      "query": "fetch bizevents, from:now()-15m\n| filter `event.provider` == \"banco.core\"\n| filter error_code == \"TIMEOUT\" or error_code == \"NETWORK_ERROR\" or error_code == \"SERVICE_UNAVAILABLE\"\n| summarize erros_infra = count()",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "💥 Erros infra (TIMEOUT/NET) — 15min",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "Erros infra", "recordField": "erros_infra" }
+      }
+    },
+    "4": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| filter isNotNull(user_id)\n| summarize falhas = count(), by:{user_id}\n| filter falhas >= 3\n| sort falhas, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🎯 Utilizadores suspeitos (≥3 falhas 1h) — Brute Force",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "Utilizadores suspeitos", "recordField": "falhas" }
+      }
+    },
+    "5": {
+      "query": "fetch bizevents, from:now()-15m\n| filter `event.provider` == \"banco.fraude\"\n| filter status == \"blocked\"\n| filter isNotNull(valor_eur)\n| summarize bloqueado = sum(toDouble(valor_eur))",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "💸 Valor bloqueado fraude (15min) — €",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "€ Bloqueado", "recordField": "bloqueado" }
+      }
+    },
+    "6": {
+      "query": "fetch spans, from:now()-15m\n| filter isNotNull(`service.name`)\n| summarize total = count(), p99_ms = round(percentile(duration, 99) / 1000000, decimals: 1), by:{servico = `service.name`}\n| sort p99_ms, direction:\"descending\"\n| limit 1\n| fields p99_ms",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "⚡ P99 mais alto (OTel spans) — 15min",
+      "type": "data",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": { "label": "P99 ms", "recordField": "p99_ms" }
+      }
+    },
+    "7": {
+      "content": "### 🔐 Detecção de Ameaças de Autenticação",
+      "type": "markdown"
+    },
+    "8": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| filter isNotNull(user_id)\n| summarize falhas_1h = count(), paises = countDistinct(pais_origem), by:{user_id}\n| filter falhas_1h >= 3\n| sort falhas_1h, direction:\"descending\"\n| limit 15",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🚨 Potencial Brute Force — utilizadores com ≥3 falhas (1h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "9": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.auth\"\n| summarize sucesso = countIf(status == \"success\"), falha = countIf(status == \"failure\"), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Auth: sucesso vs falhas (6h) — detecção de spikes",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "10": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.auth\"\n| filter pais_origem != \"PT\"\n| filter isNotNull(pais_origem)\n| summarize tentativas = count(), sucesso = countIf(status == \"success\"), falha = countIf(status == \"failure\"), by:{pais = pais_origem}\n| sort tentativas, direction:\"descending\"\n| limit 10",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "🌍 Acessos externos por país (6h) — risco geográfico",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "11": {
+      "query": "fetch bizevents, from:now()-1h\n| filter `event.provider` == \"banco.auth\"\n| filter status == \"failure\"\n| filter isNotNull(pais_origem)\n| summarize falhas = count(), by:{bin(timestamp, 5m), pais = pais_origem}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Falhas de auth por país ao longo do tempo (1h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "12": {
+      "content": "### 🐢 Transações Paradas & Anomalias de Latência",
+      "type": "markdown"
+    },
+    "13": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize normais = countIf(toLong(latencia_ms) <= 500), lentas = countIf(toLong(latencia_ms) > 500 and toLong(latencia_ms) <= 1000), muito_lentas = countIf(toLong(latencia_ms) > 1000), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Distribuição de latência: normal / lenta / parada (6h)",
+      "type": "data",
+      "visualization": "areaChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "14": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| summarize lentas_pct = round(toDouble(countIf(toLong(latencia_ms) > 1000)) / toDouble(count()) * 100, decimals: 2), p99 = percentile(toLong(latencia_ms), 99), by:{canal}\n| sort lentas_pct, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Canal mais afetado por latência alta (6h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "15": {
+      "query": "fetch bizevents, from:now()-30m\n| filter `event.provider` == \"banco.core\"\n| filter isNotNull(latencia_ms)\n| filter toLong(latencia_ms) > 1000\n| fields timestamp, canal, latencia_ms, status, valor_eur, trace_id\n| sort latencia_ms, direction:\"descending\"\n| limit 20",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Transações paradas (>1000ms) — últimas 30min",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "16": {
+      "content": "### 💥 Erros de Infraestrutura & Resiliência",
+      "type": "markdown"
+    },
+    "17": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter error_code == \"TIMEOUT\" or error_code == \"NETWORK_ERROR\" or error_code == \"SERVICE_UNAVAILABLE\"\n| summarize ocorrencias = count(), by:{bin(timestamp, 5m), error_code}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Erros de infraestrutura ao longo do tempo (6h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "18": {
+      "query": "fetch bizevents, from:now()-24h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| fieldsAdd categoria = if(error_code == \"FRAUD_DETECTED\", then: \"seguranca\", else: if(error_code == \"INSUFFICIENT_FUNDS\" or error_code == \"INVALID_IBAN\", then: \"negocio\", else: \"infra\"))\n| summarize ocorrencias = count(), impacto = round(sum(toDouble(valor_eur)), decimals: 2), by:{error_code, categoria}\n| sort ocorrencias, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Erros categorizados: infra / segurança / negócio (24h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "19": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.core\"\n| filter status == \"error\"\n| filter isNotNull(error_code)\n| summarize ocorrencias = count(), by:{error_code}\n| sort ocorrencias, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Distribuição de erros por código (6h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "20": {
+      "content": "### 🔬 Fraude Avançada & Correlação de Regras",
+      "type": "markdown"
+    },
+    "21": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.fraude\"\n| summarize total = count(), bloqueadas = countIf(status == \"blocked\"), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Verificações de fraude: total vs bloqueadas (6h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    },
+    "22": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.fraude\"\n| filter isNotNull(score)\n| summarize score_medio = round(avg(toDouble(score)), decimals: 3), p90 = round(percentile(toDouble(score), 90), decimals: 3), bloqueadas = countIf(status == \"blocked\"), by:{canal}\n| sort score_medio, direction:\"descending\"",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Fraud score médio e P90 por canal (6h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "23": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.fraude\"\n| filter status == \"blocked\"\n| filter isNotNull(regras_ativas)\n| filter regras_ativas != \"none\"\n| summarize bloqueios = count(), valor_bloqueado = round(sum(toDouble(valor_eur)), decimals: 2), by:{regras = regras_ativas}\n| sort bloqueios, direction:\"descending\"\n| limit 10",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Top combinações de regras — bloqueios (6h)",
+      "type": "data",
+      "visualization": "table",
+      "visualizationSettings": {}
+    },
+    "24": {
+      "query": "fetch bizevents, from:now()-6h\n| filter `event.provider` == \"banco.fraude\"\n| filter contains(regras_ativas, \"velocity_check\")\n| summarize alertas = count(), by:{bin(timestamp, 5m)}",
+      "querySettings": { "enableSampling": false, "maxResultRecords": 1000 },
+      "title": "Alertas velocity_check ao longo do tempo (6h)",
+      "type": "data",
+      "visualization": "lineChart",
+      "visualizationSettings": { "chartSettings": { "gapPolicy": "connect" } }
+    }
+  },
+  "variables": [],
+  "annotations": [],
+  "settings": {},
+  "layouts": {
+    "0":  { "h": 2, "w": 24, "x": 0,  "y": 0  },
+    "1":  { "h": 4, "w": 4,  "x": 0,  "y": 2  },
+    "2":  { "h": 4, "w": 4,  "x": 4,  "y": 2  },
+    "3":  { "h": 4, "w": 4,  "x": 8,  "y": 2  },
+    "4":  { "h": 4, "w": 4,  "x": 12, "y": 2  },
+    "5":  { "h": 4, "w": 4,  "x": 16, "y": 2  },
+    "6":  { "h": 4, "w": 4,  "x": 20, "y": 2  },
+    "7":  { "h": 1, "w": 24, "x": 0,  "y": 6  },
+    "8":  { "h": 7, "w": 10, "x": 0,  "y": 7  },
+    "9":  { "h": 7, "w": 14, "x": 10, "y": 7  },
+    "10": { "h": 6, "w": 12, "x": 0,  "y": 14 },
+    "11": { "h": 6, "w": 12, "x": 12, "y": 14 },
+    "12": { "h": 1, "w": 24, "x": 0,  "y": 20 },
+    "13": { "h": 6, "w": 12, "x": 0,  "y": 21 },
+    "14": { "h": 6, "w": 12, "x": 12, "y": 21 },
+    "15": { "h": 7, "w": 24, "x": 0,  "y": 27 },
+    "16": { "h": 1, "w": 24, "x": 0,  "y": 34 },
+    "17": { "h": 6, "w": 12, "x": 0,  "y": 35 },
+    "18": { "h": 6, "w": 12, "x": 12, "y": 35 },
+    "19": { "h": 5, "w": 24, "x": 0,  "y": 41 },
+    "20": { "h": 1, "w": 24, "x": 0,  "y": 46 },
+    "21": { "h": 6, "w": 12, "x": 0,  "y": 47 },
+    "22": { "h": 6, "w": 12, "x": 12, "y": 47 },
+    "23": { "h": 6, "w": 12, "x": 0,  "y": 53 },
+    "24": { "h": 6, "w": 12, "x": 12, "y": 53 }
+  },
+  "version": 21
+}

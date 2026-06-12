@@ -52,7 +52,12 @@ def login():
     user_id  = body.get("user_id") or f"USR-{random.randint(1000, 9999)}"
 
     failure_rate = float(os.getenv("AUTH_FAILURE_RATE", "0.25"))
-    is_success   = random.random() > failure_rate
+    if body.get("force_success"):
+        is_success = True
+    elif body.get("force_fail"):
+        is_success = False
+    else:
+        is_success = random.random() > failure_rate
     status       = "success" if is_success else "failure"
     pais         = random.choice(COUNTRIES[status])
 

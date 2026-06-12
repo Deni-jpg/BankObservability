@@ -100,31 +100,27 @@ SERVICOS_POR_CANAL = {
     "homebanking":        ["transferencia", "pagamento_servicos", "extrato", "investimento"],
 }
 
-ERROR_CODES = {
-    "TIMEOUT_SIBS":             "Timeout no gateway SIBS",
-    "MBWAY_NAO_REGISTADO":      "Telemóvel não registado no MB WAY",
-    "SALDO_INSUFICIENTE":       "Saldo insuficiente para a operação",
-    "LIMITE_DIARIO_EXCEDIDO":   "Limite diário ultrapassado",
-    "AUTORIZACAO_NEGADA":       "Autorização negada pela rede",
-    "CARTAO_BLOQUEADO":         "Cartão bloqueado por segurança",
-    "PIN_INCORRECTO":           "PIN incorrecto",
-    "IBAN_INVALIDO":            "Formato de IBAN inválido",
-    "GATEWAY_INDISPONIVEL":     "Gateway de pagamento indisponível",
-    "FRAUDE_DETECTADA":         "Padrão suspeito detectado",
-}
+ERROR_CODES = [
+    "TIMEOUT",
+    "NETWORK_ERROR",
+    "SERVICE_UNAVAILABLE",
+    "INSUFFICIENT_FUNDS",
+    "INVALID_IBAN",
+    "FRAUD_DETECTED",
+]
 
-REGRAS_FRAUDE = ["VELOCIDADE_ANORMAL", "VALOR_ATIPICO", "GEOLOCALIZACAO_ESTRANGEIRO",
-                 "DISPOSITIVO_NOVO", "HORARIO_INCOMUM", "BENEFICIARIO_SUSPEITO"]
+REGRAS_FRAUDE = ["velocity_check", "value_anomaly", "geolocation_mismatch",
+                 "device_fingerprint", "beneficiary_watchlist", "time_pattern", "ip_reputation"]
 
 BANCOS_PT = ["0035", "0033", "0010", "0007", "0036", "0018", "0193", "0269"]
 
 # Perfis de cliente
 PERFIS_CLIENTE = {
-    "premium":   {"weight": 0.05, "valor_mult": 5.0, "canais_pref": ["transferencia_sepa", "homebanking", "cartao_credito"]},
-    "empresa":   {"weight": 0.08, "valor_mult": 8.0, "canais_pref": ["transferencia_sepa", "homebanking", "multibanco"]},
-    "normal":    {"weight": 0.60, "valor_mult": 1.0, "canais_pref": ["mbway", "cartao_debito", "multibanco", "app_mobile"]},
-    "jovem":     {"weight": 0.20, "valor_mult": 0.5, "canais_pref": ["mbway", "app_mobile", "cartao_debito"]},
-    "senior":    {"weight": 0.07, "valor_mult": 0.7, "canais_pref": ["multibanco", "homebanking", "cartao_debito"]},
+    "premium":    {"weight": 0.05, "valor_mult": 5.0, "canais_pref": ["transferencia_sepa", "homebanking", "cartao_credito"]},
+    "enterprise": {"weight": 0.08, "valor_mult": 8.0, "canais_pref": ["transferencia_sepa", "homebanking", "multibanco"]},
+    "normal":     {"weight": 0.60, "valor_mult": 1.0, "canais_pref": ["mbway", "cartao_debito", "multibanco", "app_mobile"]},
+    "youth":      {"weight": 0.20, "valor_mult": 0.5, "canais_pref": ["mbway", "app_mobile", "cartao_debito"]},
+    "senior":     {"weight": 0.07, "valor_mult": 0.7, "canais_pref": ["multibanco", "homebanking", "cartao_debito"]},
 }
 
 # ---------- ESTADO GLOBAL ----------
@@ -233,32 +229,25 @@ def evento_transacao():
         latencia = int(latencia * random.uniform(1.5, 3.0))
 
     valor = round(random.uniform(val_min, val_max) * perfil["valor_mult"], 2)
-    servico = random.choice(SERVICOS_POR_CANAL[canal])
 
-    # JSON FLAT — sem nesting "data."
+    fraud_score = round(random.uniform(0.0, 0.45), 3)
     evt = {
         "event.provider":   "banco.core",
         "event.type":       f"transaction.{canal}",
         "timestamp":        agora_iso(),
         "transaction_id":   str(uuid.uuid4()),
+        "trace_id":         str(uuid.uuid4()).replace("-", ""),
         "canal":            canal,
-        "servico":          servico,
         "status":           "error" if is_error else "success",
         "valor_eur":        valor,
         "latencia_ms":      latencia,
         "iban_origem":      iban_pt(),
         "iban_destino":     iban_pt(),
         "perfil_cliente":   perfil_nome,
-        "moeda":            "EUR",
+        "fraud_score":      fraud_score,
     }
-    if canal == "mbway":
-        evt["telefone_destino"] = telefone_pt()
-    if canal == "multibanco":
-        evt["entidade"] = f"{random.randint(10000, 99999)}"
-        evt["referencia"] = f"{random.randint(100000000, 999999999)}"
     if is_error:
-        evt["error_code"] = random.choice(list(ERROR_CODES.keys()))
-        evt["error_message"] = ERROR_CODES[evt["error_code"]]
+        evt["error_code"] = random.choice(ERROR_CODES)
     return evt
 
 
@@ -268,19 +257,23 @@ def evento_fraude():
         weights=[35, 15, 25, 15, 10])[0]
     prob_blocked = 0.90 if estado.ataque_fraude else 0.75
     blocked = random.random() < prob_blocked
-    valor_tentado = round(random.uniform(500, 50000), 2)
+    num_regras = random.randint(1, 3)
+    regras_ativas = ",".join(random.sample(REGRAS_FRAUDE, num_regras))
+    perfil_nome, _ = escolher_perfil()
+    valor = round(random.uniform(500, 50000), 2)
     return {
-        "event.provider":    "banco.fraude",
-        "event.type":        "fraud.check",
-        "timestamp":         agora_iso(),
-        "fraud_id":          str(uuid.uuid4()),
-        "canal":             canal,
-        "status":            "blocked" if blocked else "allowed",
-        "score":             random.randint(70, 100) if blocked else random.randint(0, 40),
-        "valor_tentado_eur": valor_tentado,
-        "regra":             random.choice(REGRAS_FRAUDE),
-        "iban_origem":       iban_pt(),
-        "moeda":             "EUR",
+        "event.provider":  "banco.fraude",
+        "event.type":      "fraud.check",
+        "timestamp":       agora_iso(),
+        "fraud_id":        str(uuid.uuid4()),
+        "transaction_id":  str(uuid.uuid4()),
+        "trace_id":        str(uuid.uuid4()).replace("-", ""),
+        "canal":           canal,
+        "status":          "blocked" if blocked else "allowed",
+        "score":           round(random.uniform(0.70, 1.0), 3) if blocked else round(random.uniform(0.0, 0.4), 3),
+        "valor_eur":       valor,
+        "regras_ativas":   regras_ativas,
+        "perfil_cliente":  perfil_nome,
     }
 
 
@@ -292,16 +285,15 @@ def evento_auth():
         pais = random.choices(["PT", "ES", "BR", "GB", "RU", "CN", "NG"],
                               weights=[40, 15, 10, 10, 10, 10, 5])[0]
     return {
-        "event.provider":  "banco.auth",
-        "event.type":      "login.attempt",
-        "timestamp":       agora_iso(),
-        "session_id":      str(uuid.uuid4()),
-        "status":          "failed" if failed else "success",
-        "utilizador":      f"user{random.randint(1, 5000)}",
-        "ip_origem":       f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
-        "metodo":          random.choice(["pin", "biometria", "chave_movel_digital", "token_sms"]),
-        "pais_origem":     pais,
-        "motivo":          "credencial_invalida" if failed else "ok",
+        "event.provider":      "banco.auth",
+        "event.type":          "login.attempt",
+        "timestamp":           agora_iso(),
+        "session_id":          str(uuid.uuid4()),
+        "trace_id":            str(uuid.uuid4()).replace("-", ""),
+        "status":              "failure" if failed else "success",
+        "user_id":             f"user{random.randint(1, 5000)}",
+        "metodo_autenticacao": random.choice(["PIN", "biometrico", "chave_digital", "token_sms"]),
+        "pais_origem":         pais,
     }
 
 # ---------- ENVIO EM LOTES ----------
